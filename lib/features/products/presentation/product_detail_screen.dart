@@ -76,17 +76,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       backgroundColor: Colors.white,
       foregroundColor: AppColors.textPrimary,
       elevation: 0,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.share_outlined, size: 20),
-          onPressed: () => HapticFeedback.lightImpact(),
-        ),
-        IconButton(
-          icon: const Icon(Icons.favorite_border_rounded, size: 20),
-          onPressed: () => HapticFeedback.lightImpact(),
-        ),
-        const SizedBox(width: 4),
-      ],
     );
   }
 
@@ -456,24 +445,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => HapticFeedback.lightImpact(),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Icon(Icons.chat_bubble_outline_rounded,
-                          color: AppColors.success, size: 18),
                     ),
                   ),
                 ),

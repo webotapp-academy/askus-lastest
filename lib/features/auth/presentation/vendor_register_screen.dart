@@ -20,6 +20,13 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
 
+  // Dynamic registration fee configuration
+  final double baseFee = 1.0;
+  final double gstRate = 0.0; // 18% GST
+
+  double get gstAmount => baseFee * (gstRate / 100);
+  double get totalAmount => baseFee + gstAmount;
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -526,18 +533,18 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                   children: [
                     const Text('Base Fee',
                         style: TextStyle(color: AppColors.textSecondary)),
-                    const Text('₹999',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('₹${baseFee.toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('GST (18%)',
-                        style: TextStyle(color: AppColors.textSecondary)),
-                    const Text('₹180',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('GST (${gstRate.toStringAsFixed(0)}%)',
+                        style: const TextStyle(color: AppColors.textSecondary)),
+                    Text('₹${gstAmount.toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                   ],
                 ),
                 const Divider(height: 24),
@@ -553,7 +560,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                       ),
                     ),
                     Text(
-                      '₹1,179',
+                      '₹${totalAmount.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

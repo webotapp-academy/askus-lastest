@@ -16,7 +16,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   void dispose() {
     _animationController.dispose();
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.login(
-      _emailController.text.trim(),
+      _identifierController.text.trim(),
       _passwordController.text,
     );
 
@@ -209,16 +209,20 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       child: Column(
         children: [
           _buildTextField(
-            controller: _emailController,
-            label: 'Email Address',
-            icon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
+            controller: _identifierController,
+            label: 'Email or Phone',
+            icon: Icons.person_outlined,
+            keyboardType: TextInputType.text,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please enter your email';
+                return 'Please enter your email or phone';
               }
-              if (!value.contains('@')) {
-                return 'Please enter a valid email';
+              // Check if it's a valid email or phone
+              bool isEmail = value.contains('@');
+              bool isPhone = RegExp(r'^[0-9]{10,}$').hasMatch(value.replaceAll(RegExp(r'[^0-9]'), ''));
+              
+              if (!isEmail && !isPhone) {
+                return 'Please enter a valid email or phone number';
               }
               return null;
             },

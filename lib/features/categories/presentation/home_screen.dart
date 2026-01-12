@@ -917,8 +917,40 @@ class _CategoryCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withAlpha(25),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withAlpha(100), width: 1),
             ),
-            child: Icon(_getCategoryIcon(), color: color, size: 24),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: category.image != null && category.image!.isNotEmpty
+                  ? Image.network(
+                      category.image!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: color.withAlpha(25),
+                          child: Icon(
+                            _getCategoryIcon(),
+                            color: color,
+                            size: 24,
+                          ),
+                        );
+                      },
+                    )
+                  : Icon(_getCategoryIcon(), color: color, size: 24),
+            ),
           ),
           const SizedBox(height: 4),
           Text(

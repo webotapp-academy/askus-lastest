@@ -18,32 +18,34 @@ class _SplashScreenState extends State<SplashScreen>
   late List<Animation<Offset>> _tileAnimations;
   late AnimationController _textController;
   late Animation<double> _textOpacity;
+  int _loadedImageCount = 0;
+  bool _hasNavigated = false;
 
   final List<_TileData> _tiles = [
-    _TileData(Icons.front_loader, const Color(0xFFe94560), 0, 0, 2, 2,
-        const Offset(-2, -2)),
-    _TileData(Icons.precision_manufacturing, const Color(0xFF0f4c75), 2, 0, 1,
-        1, const Offset(2, -1)),
-    _TileData(Icons.handyman, const Color(0xFF3282b8), 2, 1, 1, 1,
-        const Offset(2, 1)),
-    _TileData(Icons.agriculture, const Color(0xFF00b894), 0, 2, 1, 1,
-        const Offset(-2, 0)),
-    _TileData(Icons.local_shipping, const Color(0xFFfdcb6e), 1, 2, 1, 1,
-        const Offset(0, -2)),
-    _TileData(Icons.fire_truck, const Color(0xFFe17055), 2, 2, 1, 1,
-        const Offset(2, 0)),
-    _TileData(Icons.engineering, const Color(0xFF6c5ce7), 0, 3, 1, 2,
-        const Offset(-2, 1)),
-    _TileData(Icons.build_circle, const Color(0xFF00cec9), 1, 3, 1, 1,
-        const Offset(0, 2)),
-    _TileData(Icons.electrical_services, const Color(0xFFffeaa7), 2, 3, 1, 1,
-        const Offset(2, 2)),
-    _TileData(Icons.plumbing, const Color(0xFFa29bfe), 1, 4, 1, 1,
-        const Offset(0, 2)),
-    _TileData(Icons.forklift, const Color(0xFF74b9ff), 2, 4, 1, 2,
-        const Offset(2, 2)),
-    _TileData(Icons.construction, const Color(0xFFff7675), 0, 5, 2, 1,
-        const Offset(-2, 2)),
+    _TileData('https://images.unsplash.com/photo-1580901369227-308f6f40bdeb?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFe94560), 0, 0, 2, 2,
+        const Offset(-2, -2)), // Excavator
+    _TileData('https://images.unsplash.com/photo-1694521787193-9293daeddbaa?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF0f4c75), 2, 0, 1,
+        1, const Offset(2, -1)), // Construction workers
+    _TileData('https://plus.unsplash.com/premium_photo-1664302293475-aafd35d6abf6?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF3282b8), 2, 1, 1, 1,
+        const Offset(2, 1)), // Tools
+    _TileData('https://images.unsplash.com/photo-1630288213265-64e4673b6f49?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF00b894), 0, 2, 1, 1,
+        const Offset(-2, 0)), // Bulldozer
+    _TileData('https://images.unsplash.com/photo-1660367439240-d38cb03a4365?q=80&w=1173&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFfdcb6e), 1, 2, 1, 1,
+        const Offset(0, -2)), // Construction site
+    _TileData('https://images.unsplash.com/photo-1760445726817-74664c6c1703?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFe17055), 2, 2, 1, 1,
+        const Offset(2, 0)), // Crane
+    _TileData('https://images.unsplash.com/photo-1763272594463-b56b1a82ed62?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF6c5ce7), 0, 3, 1, 2,
+        const Offset(-2, 1)), // Construction helmet
+    _TileData('https://plus.unsplash.com/premium_photo-1677707394493-09962b13b675?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF00cec9), 1, 3, 1, 1,
+        const Offset(0, 2)), // Building structure
+    _TileData('https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=300&h=300&fit=crop', const Color(0xFFffeaa7), 2, 3, 1, 1,
+        const Offset(2, 2)), // Electrical work
+    _TileData('https://images.unsplash.com/photo-1605910347035-59a2b94f2061?q=80&w=709&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFa29bfe), 1, 4, 1, 1,
+        const Offset(0, 2)), // Plumbing
+    _TileData('https://plus.unsplash.com/premium_photo-1663100854088-bd8ab87870a7?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF74b9ff), 2, 4, 1, 2,
+        const Offset(2, 2)), // Forklift
+    _TileData('https://images.unsplash.com/photo-1610831499021-8d206e50bbb6?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFff7675), 0, 5, 2, 1,
+        const Offset(-2, 2)), // Construction site aerial
   ];
 
   @override
@@ -51,7 +53,25 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _setupAnimations();
     _startAnimations();
-    _checkAuth();
+  }
+
+  void _onImageLoaded() {
+    if (!mounted) return;
+
+    setState(() {
+      _loadedImageCount++;
+    });
+
+    // Check if all images are loaded
+    if (_loadedImageCount >= _tiles.length && !_hasNavigated) {
+      _hasNavigated = true;
+      // Wait 2 seconds after all images loaded, then navigate
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          _checkAuth();
+        }
+      });
+    }
   }
 
   void _setupAnimations() {
@@ -111,7 +131,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
@@ -181,19 +200,20 @@ class _SplashScreenState extends State<SplashScreen>
                     return AnimatedBuilder(
                       animation: _tileAnimations[index],
                       builder: (context, child) {
-                        return Positioned(
-                          left: left +
-                              _tileAnimations[index].value.dx * screenWidth,
-                          top: top +
-                              _tileAnimations[index].value.dy * screenHeight,
-                          width: width,
-                          height: height,
-                          child: _BentoTile(
-                            icon: tile.icon,
-                            color: tile.color,
-                          ),
-                        );
-                      },
+                          return Positioned(
+                            left: left +
+                                _tileAnimations[index].value.dx * screenWidth,
+                            top: top +
+                                _tileAnimations[index].value.dy * screenHeight,
+                            width: width,
+                            height: height,
+                            child: _BentoTile(
+                              imageUrl: tile.imageUrl,
+                              color: tile.color,
+                              onImageLoaded: _onImageLoaded,
+                            ),
+                          );
+                        },
                     );
                   }),
                 ),
@@ -249,10 +269,24 @@ class _SplashScreenState extends State<SplashScreen>
                       SizedBox(
                         width: 32,
                         height: 32,
-                        child: CircularProgressIndicator(
-                          color: AppColors.warning,
-                          strokeWidth: 3,
-                          backgroundColor: Colors.white.withAlpha(25),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              color: AppColors.warning,
+                              strokeWidth: 3,
+                              backgroundColor: Colors.white.withAlpha(25),
+                            ),
+                            if (_loadedImageCount > 0 && _loadedImageCount < _tiles.length)
+                              Text(
+                                '${_loadedImageCount}/${_tiles.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -268,7 +302,7 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 class _TileData {
-  final IconData icon;
+  final String imageUrl;
   final Color color;
   final int col;
   final int row;
@@ -277,7 +311,7 @@ class _TileData {
   final Offset startOffset;
 
   const _TileData(
-    this.icon,
+    this.imageUrl,
     this.color,
     this.col,
     this.row,
@@ -287,27 +321,38 @@ class _TileData {
   );
 }
 
-class _BentoTile extends StatelessWidget {
-  final IconData icon;
+class _BentoTile extends StatefulWidget {
+  final String imageUrl;
   final Color color;
+  final VoidCallback onImageLoaded;
 
   const _BentoTile({
-    required this.icon,
+    required this.imageUrl,
     required this.color,
-  });
+    required this.onImageLoaded,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  State<_BentoTile> createState() => _BentoTileState();
+}
+
+class _BentoTileState extends State<_BentoTile> {
+  bool _reported = false;
+
+  void _reportLoadedOnce() {
+    if (_reported) return;
+    _reported = true;
+    widget.onImageLoaded();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final color = widget.color;
+    final imageUrl = widget.imageUrl;
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withAlpha(60),
-            color.withAlpha(30),
-          ],
-        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: color.withAlpha(80),
@@ -321,11 +366,73 @@ class _BentoTile extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: Icon(
-          icon,
-          size: 40,
-          color: color,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18.5),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Image
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              cacheWidth: 800,
+              cacheHeight: 800,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) {
+                  // finished loading
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _reportLoadedOnce();
+                  });
+                  return child;
+                }
+                return Container(
+                  color: color.withAlpha(30),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        strokeWidth: 2,
+                        color: color.withAlpha(150),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                // Count errors as "loaded" so we don't block forever
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _reportLoadedOnce();
+                });
+                return Container(
+                  color: color.withAlpha(30),
+                  child: Icon(
+                    Icons.construction,
+                    size: 40,
+                    color: color.withAlpha(150),
+                  ),
+                );
+              },
+            ),
+            // Gradient overlay for better text visibility
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withAlpha(80),
+                    color.withAlpha(40),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

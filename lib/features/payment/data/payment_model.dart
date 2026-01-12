@@ -51,10 +51,10 @@ class PaymentOrder {
 }
 
 class VendorRegistrationFee {
-  static const double registrationFee = 1.0; // ₹1 registration fee (TEST MODE)
-  static const double gstRate = 0.0; // 0% GST (TEST MODE)
+  static const double registrationFee = 1.0; // Base registration fee (test mode)
+  static const double gstRate = 0.0; // 0% GST (test mode)
 
   static double get totalAmount =>
-      registrationFee + (registrationFee * gstRate);
-  static double get gstAmount => registrationFee * gstRate;
+      registrationFee + (registrationFee * (gstRate / 100));
+  static double get gstAmount => registrationFee * (gstRate / 100);
 }

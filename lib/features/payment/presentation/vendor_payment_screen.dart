@@ -598,9 +598,6 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
     final features = [
       'List unlimited products & services',
       'Direct customer enquiries',
-      'Built-in chat system',
-      'Analytics dashboard',
-      'Marketing tools',
       '24/7 customer support',
     ];
 
