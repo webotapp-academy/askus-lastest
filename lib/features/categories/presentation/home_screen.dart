@@ -173,11 +173,12 @@ class _UserHomeTabState extends State<_UserHomeTab> {
             if (banners.homeTopBanners.isNotEmpty)
               _buildBannerCarousel(banners),
             _buildCategoriesSection(categories),
+            _buildFullWidthCategoriesSection(categories),
+            _buildAllProductsSection(products),
             _buildFeaturedProductsSection(products),
             _buildFeaturedServicesSection(context),
             if (banners.homeMiddleBanners.isNotEmpty)
               _buildPromoBanner(banners),
-            _buildAllProductsSection(products),
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
         ),
@@ -212,12 +213,55 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Ask Us',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
+                            // Logo Image
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Image.asset(
+                                'assets/images/askus_logo.png',
+                                height: 50,
+                                fit: BoxFit.contain,
+                                alignment: Alignment.centerLeft,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Fallback to text if image not found
+                                  return Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.question_answer_rounded,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Ask Us',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Your Marketplace',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -417,38 +461,46 @@ class _UserHomeTabState extends State<_UserHomeTab> {
               ],
             ),
             if (categories.isLoading)
-              const Center(child: CircularProgressIndicator())
+              const SizedBox(height: 170, child: Center(child: CircularProgressIndicator()))
             else if (categories.error != null)
-              Center(
-                child: Text(
-                  'Error: ${categories.error}',
-                  style: TextStyle(color: AppColors.error, fontSize: 12),
+              SizedBox(
+                height: 170,
+                child: Center(
+                  child: Text(
+                    'Error: ${categories.error}',
+                    style: TextStyle(color: AppColors.error, fontSize: 12),
+                  ),
                 ),
               )
             else if (categories.parentCategories.isEmpty)
-              const Center(
-                child: Text(
-                  'No categories found',
-                  style:
-                      TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              const SizedBox(
+                height: 170,
+                child: Center(
+                  child: Text(
+                    'No categories found',
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
                 ),
               )
             else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(top: 10),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  childAspectRatio: 0.95,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
+              SizedBox(
+                height: 210,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(top: 10),
+                  itemCount: categories.parentCategories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories.parentCategories[index];
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? 0 : 8,
+                        right: 8,
+                      ),
+                      child: _CategoryCard(category: category),
+                    );
+                  },
                 ),
-                itemCount: categories.parentCategories.take(8).length,
-                itemBuilder: (context, index) {
-                  final category = categories.parentCategories[index];
-                  return _CategoryCard(category: category);
-                },
               ),
           ],
         ),
@@ -656,6 +708,74 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                       itemBuilder: (context, index) {
                         final product = products.products[index];
                         return _ProductCard(product: product);
+                      },
+                    ),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullWidthCategoriesSection(CategoryProvider categories) {
+    if (categories.parentCategories.isEmpty && !categories.isLoading) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverToBoxAdapter(
+      child: Container(
+        color: Colors.white,
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.local_fire_department_rounded,
+                        color: AppColors.error, size: 18),
+                    const SizedBox(width: 6),
+                    const Text('Categories', style: _sectionTitleStyle),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ProductListScreen()),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(50, 30),
+                  ),
+                  child: Text(
+                    'View All',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            categories.isLoading
+                ? const SizedBox(
+                    height: 300,
+                    child: Center(child: CircularProgressIndicator()))
+                : SizedBox(
+                    height: categories.parentCategories.length * 280,
+                    child: ListView.builder(
+                      scrollDirection: Axis.vertical,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: categories.parentCategories.length,
+                      itemBuilder: (context, index) {
+                        final category = categories.parentCategories[index];
+                        return _FullWidthCategoryCard(category: category);
                       },
                     ),
                   ),
@@ -912,8 +1032,8 @@ class _CategoryCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 50,
-            height: 50,
+            width: 140,
+            height: 140,
             decoration: BoxDecoration(
               color: color.withAlpha(25),
               borderRadius: BorderRadius.circular(12),
@@ -925,6 +1045,8 @@ class _CategoryCard extends StatelessWidget {
                   ? Image.network(
                       category.image!,
                       fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Center(
@@ -944,25 +1066,28 @@ class _CategoryCard extends StatelessWidget {
                           child: Icon(
                             _getCategoryIcon(),
                             color: color,
-                            size: 24,
+                            size: 40,
                           ),
                         );
                       },
                     )
-                  : Icon(_getCategoryIcon(), color: color, size: 24),
+                  : Icon(_getCategoryIcon(), color: color, size: 40),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            category.name,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+          const SizedBox(height: 10),
+          SizedBox(
+            width: 140,
+            child: Text(
+              category.name,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1095,6 +1220,334 @@ class _ProductCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _FullWidthCategoryCard extends StatelessWidget {
+  final Category category;
+
+  const _FullWidthCategoryCard({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _getCategoryColor();
+    final hasGalleryImages = category.galleryImages.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category description
+          Text(
+            category.description ?? category.name,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Main category card with gallery inside
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductListScreen(
+                    categoryId: category.id, categoryName: category.name),
+              ),
+            ),
+            child: Container(
+              height: hasGalleryImages ? 220 : 140,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  // Main Background Image or Gradient (always show)
+                  Positioned.fill(
+                    child: category.image != null && category.image!.isNotEmpty
+                        ? Image.network(
+                            category.image!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [color.withAlpha(80), color.withAlpha(30)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  _getCategoryIcon(),
+                                  color: color,
+                                  size: 70,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [color.withAlpha(80), color.withAlpha(30)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                _getCategoryIcon(),
+                                color: color,
+                                size: 70,
+                              ),
+                            ),
+                          ),
+                  ),
+                  
+                  // Gallery Images Grid (if available)
+                  if (hasGalleryImages)
+                    Positioned.fill(
+                      child: _buildGalleryGrid(category.galleryImages, color),
+                    ),
+                  
+                  // Dark Gradient Overlay
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.5),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Category Name at Bottom
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    right: 80,
+                    child: Text(
+                      category.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black45,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  
+                  // View All button at bottom right
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'View All',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: AppColors.primary,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon() {
+    if (category.icon != null && category.icon!.isNotEmpty) {
+      String iconName = category.icon!.toLowerCase();
+      if (iconName.startsWith('fa fa-')) {
+        iconName = iconName.substring(6);
+      } else if (iconName.startsWith('fa-')) {
+        iconName = iconName.substring(3);
+      }
+      switch (iconName) {
+        case 'hard-hat':
+        case 'helmet-safety':
+          return Icons.construction_rounded;
+        case 'industry':
+        case 'factory':
+          return Icons.factory_rounded;
+        case 'tools':
+        case 'wrench':
+          return Icons.build_rounded;
+        case 'bolt':
+        case 'lightning':
+          return Icons.electrical_services_rounded;
+        case 'paint-roller':
+        case 'paint-brush':
+          return Icons.format_paint_rounded;
+        default:
+          return Icons.category_rounded;
+      }
+    }
+    return Icons.category_rounded;
+  }
+
+  Color _getCategoryColor() {
+    if (category.icon != null && category.icon!.isNotEmpty) {
+      String iconName = category.icon!.toLowerCase();
+      if (iconName.startsWith('fa fa-')) {
+        iconName = iconName.substring(6);
+      } else if (iconName.startsWith('fa-')) {
+        iconName = iconName.substring(3);
+      }
+      switch (iconName) {
+        case 'hard-hat':
+        case 'helmet-safety':
+          return const Color(0xFFF59E0B);
+        case 'industry':
+        case 'factory':
+          return const Color(0xFF6B7280);
+        case 'tools':
+        case 'wrench':
+        case 'hammer':
+          return const Color(0xFF8B5CF6);
+        case 'bolt':
+        case 'lightning':
+          return const Color(0xFFF59E0B);
+        default:
+          return AppColors.primary;
+      }
+    }
+    final slug = category.slug.toLowerCase();
+    if (slug.contains('construction')) {
+      return const Color(0xFFF59E0B);
+    } else if (slug.contains('building')) {
+      return const Color(0xFF6B7280);
+    } else if (slug.contains('tool')) {
+      return const Color(0xFF8B5CF6);
+    }
+    return AppColors.primary;
+  }
+  
+  Widget _buildGalleryGrid(List<String> images, Color color) {
+    // Limit to max 9 images for 3x3 grid
+    final displayImages = images.take(9).toList();
+    
+    if (displayImages.length == 1) {
+      // Single image - full width with padding and border radius
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            displayImages[0],
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, __, ___) => Container(
+              color: color.withOpacity(0.1),
+              child: Icon(_getCategoryIcon(), color: color, size: 50),
+            ),
+          ),
+        ),
+      );
+    } else if (displayImages.length == 2) {
+      // Two images - side by side with spacing and border radius
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: displayImages.map((img) => Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: double.infinity,
+                  child: Image.network(
+                    img,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: color.withOpacity(0.1),
+                      child: Icon(_getCategoryIcon(), color: color.withOpacity(0.5), size: 40),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )).toList(),
+        ),
+      );
+    } else {
+      // 3+ images - Grid layout with 3x3 cells and border radius
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+            childAspectRatio: 1.5,
+          ),
+          itemCount: displayImages.length,
+          itemBuilder: (context, index) {
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                displayImages[index],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) => Container(
+                  color: color.withOpacity(0.1),
+                  child: Icon(_getCategoryIcon(), color: color.withOpacity(0.5), size: 24),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
   }
 }
 

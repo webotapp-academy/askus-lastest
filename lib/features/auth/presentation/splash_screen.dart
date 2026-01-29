@@ -65,8 +65,8 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if all images are loaded
     if (_loadedImageCount >= _tiles.length && !_hasNavigated) {
       _hasNavigated = true;
-      // Wait 2 seconds after all images loaded, then navigate
-      Future.delayed(const Duration(seconds: 2), () {
+      // Wait 4 seconds after all images loaded, then navigate
+      Future.delayed(const Duration(seconds: 4), () {
         if (mounted) {
           _checkAuth();
         }
@@ -229,23 +229,63 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Ask Us',
-                        style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 3,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black87,
-                              blurRadius: 20,
-                              offset: Offset(0, 4),
+                      // Logo Image
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppColors.warning.withOpacity(0.2),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.warning.withOpacity(0.15),
+                              blurRadius: 30,
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
+                        child: Image.asset(
+                          'assets/images/askus_logo.png',
+                          height: 120,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to text if image not found
+                            return Column(
+                              children: [
+                                const Icon(
+                                  Icons.question_answer_rounded,
+                                  color: Colors.white,
+                                  size: 60,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Ask Us',
+                                  style: TextStyle(
+                                    fontSize: 52,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: -1,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Your Marketplace',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 24),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 8),

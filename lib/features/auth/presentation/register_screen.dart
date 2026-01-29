@@ -152,100 +152,193 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 20),
-                      
-                      // Header Section
-                      _buildHeader(),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // Form Card
-                      _buildFormCard(),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Terms and Conditions
-                      _buildTermsSection(),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Register Button
-                      _buildRegisterButton(),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Login Link
-                      _buildLoginLink(),
-                      
-                      const SizedBox(height: 40),
-                    ],
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Background decoration
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withOpacity(0.1),
+                    AppColors.secondary.withOpacity(0.05),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -150,
+            left: -100,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.secondary.withOpacity(0.08),
+                    AppColors.primary.withOpacity(0.03),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Floating icons
+          Positioned(
+            top: 100,
+            right: 30,
+            child: _buildFloatingIcon(Icons.construction_rounded, AppColors.warning, 0.7),
+          ),
+          Positioned(
+            top: 180,
+            left: 25,
+            child: _buildFloatingIcon(Icons.handyman_rounded, AppColors.secondary, 0.8),
+          ),
+          Positioned(
+            bottom: 220,
+            right: 40,
+            child: _buildFloatingIcon(Icons.shopping_cart_rounded, AppColors.success, 0.6),
+          ),
+          // Content
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 20),
+                          
+                          // Header Section
+                          _buildHeader(),
+                          
+                          const SizedBox(height: 32),
+                          
+                          // Form Card
+                          _buildFormCard(),
+                          
+                          const SizedBox(height: 20),
+                          
+                          // Terms and Conditions
+                          _buildTermsSection(),
+                          
+                          const SizedBox(height: 20),
+                          
+                          // Register Button
+                          _buildRegisterButton(),
+                          
+                          const SizedBox(height: 20),
+                          
+                          // Login Link
+                          _buildLoginLink(),
+                          
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildFloatingIcon(IconData icon, Color color, double opacity) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, -20 * value),
+          child: Opacity(
+            opacity: value * opacity,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: color.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 28,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildHeader() {
     return Column(
       children: [
-        // App Icon/Logo
+        // App Icon/Logo with gradient
         Container(
-          width: 80,
-          height: 80,
+          width: 120,
+          height: 120,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [AppColors.primary, AppColors.secondary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+                color: AppColors.primary.withOpacity(0.4),
+                blurRadius: 30,
+                spreadRadius: 2,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
           child: const Icon(
-            Icons.storefront_rounded,
-            size: 40,
+            Icons.hardware_rounded,
+            size: 60,
             color: Colors.white,
           ),
         ),
         
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
         
-        // Title
-        const Text(
-          'Create Account',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+        // Title with gradient shader
+        ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [AppColors.primary, AppColors.secondary],
+          ).createShader(bounds),
+          child: const Text(
+            'Create Account',
+            style: TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
         
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         
         // Subtitle
         Text(
@@ -253,10 +346,54 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.3,
           ),
         ),
+        
+        const SizedBox(height: 16),
+        
+        // Feature badges
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildFeatureBadge(Icons.business_rounded, 'Materials'),
+            const SizedBox(width: 8),
+            _buildFeatureBadge(Icons.build_rounded, 'Services'),
+            const SizedBox(width: 8),
+            _buildFeatureBadge(Icons.local_shipping_rounded, 'Delivery'),
+          ],
+        ),
       ],
+    );
+  }
+
+  Widget _buildFeatureBadge(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -264,16 +401,21 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            spreadRadius: 2,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       child: Column(
         children: [
           // Full Name Field
@@ -411,27 +553,48 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       ),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.primary),
+        labelStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w500,
+        ),
+        prefixIcon: Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withOpacity(0.15),
+                AppColors.secondary.withOpacity(0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
         suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.grey.withOpacity(0.05),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.error),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
-        filled: true,
-        fillColor: AppColors.background.withOpacity(0.5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       ),
     );
   }
@@ -490,7 +653,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   Widget _buildRegisterButton() {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) => Container(
-        height: 56,
+        height: 60,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [AppColors.primary, AppColors.secondary],
@@ -500,8 +663,9 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 20,
+              color: AppColors.primary.withOpacity(0.4),
+              blurRadius: 25,
+              spreadRadius: 2,
               offset: const Offset(0, 10),
             ),
           ],

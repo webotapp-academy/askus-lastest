@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Category {
   final int id;
   final String name;
@@ -10,6 +12,7 @@ class Category {
   final String status;
   final int productCount;
   final int serviceCount;
+  final List<String> galleryImages;
 
   Category({
     required this.id,
@@ -23,6 +26,7 @@ class Category {
     required this.status,
     this.productCount = 0,
     this.serviceCount = 0,
+    this.galleryImages = const [],
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -30,6 +34,32 @@ class Category {
     if (json['parent_id'] != null) {
       final parsed = int.tryParse(json['parent_id'].toString());
       parentIdValue = (parsed == 0) ? null : parsed;
+    }
+
+    // Parse gallery images from JSON string
+    List<String> galleryImagesList = [];
+    try {
+      final dynamic galleryData = json['gallery_images'];
+      
+      if (galleryData != null && galleryData.toString().isNotEmpty) {
+        if (galleryData is String) {
+          // Parse JSON string
+          final decoded = jsonDecode(galleryData);
+          if (decoded is List && decoded.isNotEmpty) {
+            galleryImagesList = List<String>.from(
+              decoded.map((e) => e.toString()).toList()
+            );
+          }
+        } else if (galleryData is List && galleryData.isNotEmpty) {
+          // Already a list
+          galleryImagesList = List<String>.from(
+            galleryData.map((e) => e.toString()).toList()
+          );
+        }
+      }
+    } catch (e) {
+      print('⚠️ Error parsing gallery images: $e');
+      galleryImagesList = []; // Ensure it's always a list
     }
 
     return Category(
@@ -44,6 +74,7 @@ class Category {
       status: json['status']?.toString() ?? 'active',
       productCount: int.tryParse(json['product_count']?.toString() ?? '0') ?? 0,
       serviceCount: int.tryParse(json['service_count']?.toString() ?? '0') ?? 0,
+      galleryImages: galleryImagesList,
     );
   }
 

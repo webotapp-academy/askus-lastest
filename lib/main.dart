@@ -11,6 +11,7 @@ import 'features/chat/data/chat_provider.dart';
 import 'features/notifications/data/notification_provider.dart';
 import 'features/banners/data/banner_provider.dart';
 import 'features/vendor/data/vendor_provider.dart';
+import 'features/reviews/data/review_provider.dart';
 import 'features/auth/presentation/splash_screen.dart';
 
 void main() {
@@ -35,6 +36,7 @@ class AskUsApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => BannerProvider()),
         ChangeNotifierProvider(create: (_) => VendorProvider()),
+        ChangeNotifierProvider(create: (_) => ReviewProvider()),
       ],
       child: MaterialApp(
         title: 'Ask Us',

@@ -186,33 +186,73 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Vendor Registration'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
       ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            _buildStepIndicator(),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildPersonalInfoStep(),
-                  _buildBusinessInfoStep(),
-                  _buildDocumentsStep(),
-                  _buildPaymentStep(),
-                ],
+      body: Stack(
+        children: [
+          // Background decoration
+          Positioned(
+            top: -80,
+            right: -80,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withOpacity(0.1),
+                    AppColors.secondary.withOpacity(0.05),
+                  ],
+                ),
               ),
             ),
-            _buildBottomButtons(),
-          ],
-        ),
+          ),
+          Positioned(
+            bottom: -120,
+            left: -80,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.secondary.withOpacity(0.08),
+                    AppColors.primary.withOpacity(0.03),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Content
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                _buildStepIndicator(),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildPersonalInfoStep(),
+                      _buildBusinessInfoStep(),
+                      _buildDocumentsStep(),
+                      _buildPaymentStep(),
+                    ],
+                  ),
+                ),
+                _buildBottomButtons(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -608,28 +648,58 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     TextInputType? keyboardType,
     bool obscureText = false,
     Widget? suffixIcon,
-    int maxLines = 1,
     int? maxLength,
+    int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscureText,
-      maxLines: maxLines,
       maxLength: maxLength,
+      maxLines: maxLines,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: icon != null ? Icon(icon, color: AppColors.primary) : null,
+        labelStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w500,
+        ),
+        prefixIcon: icon != null
+            ? Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.15),
+                      AppColors.secondary.withOpacity(0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              )
+            : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white,
-        counterText: '',
+        fillColor: Colors.grey.withOpacity(0.05),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.border)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        ),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.primary, width: 2)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        counterText: '',
       ),
     );
   }
@@ -668,34 +738,55 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                 child: OutlinedButton(
                   onPressed: _previousStep,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    side: BorderSide(color: AppColors.primary, width: 2),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('Back'),
+                  child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ),
             if (_currentStep > 0) const SizedBox(width: 16),
             Expanded(
               flex: _currentStep > 0 ? 2 : 1,
-              child: ElevatedButton(
-                onPressed: auth.status == AuthStatus.loading ? null : _nextStep,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+              child: Container(
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.secondary],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.4),
+                      blurRadius: 25,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: auth.status == AuthStatus.loading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : Text(_getButtonText(),
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w600)),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: auth.status == AuthStatus.loading ? null : _nextStep,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Center(
+                      child: auth.status == AuthStatus.loading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : Text(_getButtonText(),
+                              style: const TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16)),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],

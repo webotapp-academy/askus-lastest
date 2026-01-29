@@ -5,6 +5,10 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../data/product_provider.dart';
 import '../../enquiries/presentation/create_enquiry_screen.dart';
+import '../../reviews/presentation/reviews_list_screen.dart';
+import '../../reviews/presentation/write_review_screen.dart';
+import '../../reviews/data/review_provider.dart';
+import '../../reviews/presentation/widgets/rating_bar.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -25,6 +29,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ProductProvider>().fetchProductDetail(widget.productId);
+        // Load reviews for this product
+        context.read<ReviewProvider>().fetchReviews(
+              type: 'product',
+              itemId: widget.productId,
+              refresh: true,
+            );
       }
     });
   }
@@ -58,6 +68,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     _buildProductInfo(product),
                     _buildDescription(product),
                     _buildVendorInfo(product),
+                    _buildReviewsSection(product),
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -379,6 +390,252 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildReviewsSection(dynamic product) {
+    return Consumer<ReviewProvider>(
+      builder: (context, reviewProvider, _) {
+        return Container(
+          color: Colors.white,
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.star_rounded,
+                          color: AppColors.warning, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Reviews ${reviewProvider.stats != null ? "(${reviewProvider.stats!.totalReviews})" : ""}',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  if (reviewProvider.reviews.isNotEmpty)
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChangeNotifierProvider.value(
+                              value: context.read<ReviewProvider>(),
+                              child: ReviewsListScreen(
+                                type: 'product',
+                                itemId: widget.productId,
+                                vendorId: product.vendorId,
+                                itemName: product.name,
+                                itemImage: product.images.isNotEmpty
+                                    ? product.images[0]
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('See All'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Rating summary
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          reviewProvider.stats?.averageRating
+                                  .toStringAsFixed(1) ??
+                              product.rating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        RatingBar(
+                            rating:
+                                reviewProvider.stats?.averageRating.round() ??
+                                    product.rating.round(),
+                            size: 14),
+                        if (reviewProvider.stats != null)
+                          Text(
+                            '${reviewProvider.stats!.totalReviews} reviews',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChangeNotifierProvider.value(
+                                value: context.read<ReviewProvider>(),
+                                child: WriteReviewScreen(
+                                  type: 'product',
+                                  itemId: widget.productId,
+                                  vendorId: product.vendorId,
+                                  itemName: product.name,
+                                  itemImage: product.images.isNotEmpty
+                                      ? product.images[0]
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ).then((_) {
+                            // Refresh reviews after writing a review
+                            context.read<ReviewProvider>().fetchReviews(
+                                  type: 'product',
+                                  itemId: widget.productId,
+                                  refresh: true,
+                                );
+                          });
+                        },
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        label: const Text('Write a Review'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Show recent reviews
+              if (reviewProvider.reviews.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Recent Reviews',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                ...reviewProvider.reviews
+                    .take(2)
+                    .map((review) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: AppColors.border.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      review.userName ?? 'Anonymous',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    RatingBar(rating: review.rating, size: 12),
+                                    const Spacer(),
+                                    Text(
+                                      review.timeAgo,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (review.title != null &&
+                                    review.title!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    review.title!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                                if (review.comment != null &&
+                                    review.comment!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    review.comment!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ] else if (!reviewProvider.isLoading) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.rate_review_outlined,
+                        size: 32,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No reviews yet',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Be the first to review this product!',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 

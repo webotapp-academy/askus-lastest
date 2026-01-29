@@ -61,4 +61,10 @@ class ApiConstants {
   static const String search = '/search/index.php';
 
   static const String banners = '/banners/list.php';
+
+  // Reviews endpoints
+  static const String reviewsList = '/reviews/list.php';
+  static const String reviewsCreate = '/reviews/create.php';
+  static const String reviewsDelete = '/reviews/delete.php';
+  static const String reviewsStats = '/reviews/stats.php';
 }

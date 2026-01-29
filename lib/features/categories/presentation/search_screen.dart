@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/api_constants.dart';
@@ -27,18 +29,196 @@ class _SearchScreenState extends State<SearchScreen> {
   String _searchType = 'all';
   String? _errorMessage;
   Timer? _debounce;
+  Timer? _silenceTimer;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _speechAvailable = false;
+  String? _currentLocaleId;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+    _speech = stt.SpeechToText();
+    _initSpeech();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _silenceTimer?.cancel();
+    if (_isListening) {
+      _speech.stop();
+    }
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          if (status == 'notListening' || status == 'done') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          debugPrint('Speech init error: $error');
+          setState(() => _isListening = false);
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _speechAvailable = available;
+      });
+      if (available) {
+        final sysLocale = await _speech.systemLocale();
+        if (!mounted) return;
+        setState(() {
+          _currentLocaleId = sysLocale?.localeId;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to initialize speech: $e');
+      setState(() {
+        _speechAvailable = false;
+      });
+    }
+  }
+
+  Future<void> _startListening() async {
+    // Check microphone permission first
+    final micPermission = await Permission.microphone.status;
+    
+    if (micPermission.isDenied) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted) {
+        if (!mounted) return;
+        _showPermissionDialog();
+        return;
+      }
+    } else if (micPermission.isPermanentlyDenied) {
+      if (!mounted) return;
+      _showPermissionDialog();
+      return;
+    }
+
+    // Initialize speech if not available
+    if (!_speechAvailable) {
+      await _initSpeech();
+    }
+    
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech recognition is not available on this device'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isListening = true);
+    
+    // Start silence timer - auto-stop after 5 seconds of no speech
+    _startSilenceTimer();
+    
+    try {
+      await _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+          
+          // Reset silence timer on any speech activity
+          _resetSilenceTimer();
+          
+          setState(() {
+            _searchController.text = result.recognizedWords;
+            _searchController.selection = TextSelection.fromPosition(
+              TextPosition(offset: _searchController.text.length),
+            );
+          });
+          
+          if (result.finalResult) {
+            _stopListening();
+            _search(_searchController.text);
+          }
+        },
+        localeId: _currentLocaleId,
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: stt.ListenMode.confirmation,
+      );
+    } catch (e) {
+      debugPrint('Error starting speech recognition: $e');
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start voice recognition: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopListening() async {
+    _silenceTimer?.cancel();
+    try {
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    } catch (e) {
+      debugPrint('Error stopping speech recognition: $e');
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    }
+  }
+
+  void _startSilenceTimer() {
+    _silenceTimer?.cancel();
+    _silenceTimer = Timer(const Duration(seconds: 5), () {
+      if (_isListening) {
+        debugPrint('Auto-stopping listening after 5 seconds of silence');
+        _stopListening();
+        if (mounted && _searchController.text.isNotEmpty) {
+          // Trigger search if there's text when timeout occurs
+          _search(_searchController.text);
+        }
+      }
+    });
+  }
+
+  void _resetSilenceTimer() {
+    if (_isListening) {
+      _startSilenceTimer();
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Microphone Permission Required'),
+        content: const Text(
+          'This app needs microphone access to convert your voice to text for searching. '
+          'Please enable microphone permission in your device settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onSearchChanged() {
@@ -163,14 +343,72 @@ class _SearchScreenState extends State<SearchScreen> {
           onSubmitted: _search,
         ),
         actions: [
+          // Mic button with animation and tooltip
+          Tooltip(
+            message: _isListening ? 'Stop listening' : 'Voice search',
+            child: IconButton(
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  key: ValueKey(_isListening),
+                  color: _isListening ? Colors.redAccent : null,
+                ),
+              ),
+              onPressed: () async {
+                if (_isListening) {
+                  await _stopListening();
+                } else {
+                  await _startListening();
+                }
+              },
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.search),
+            tooltip: 'Search',
             onPressed: () => _search(_searchController.text),
           ),
         ],
       ),
       body: Column(
         children: [
+          // Listening indicator banner
+          if (_isListening)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                border: Border(
+                  bottom: BorderSide(color: Colors.red.shade200, width: 1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.mic, color: Colors.red.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Listening... Speak now',
+                    style: TextStyle(
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.red.shade600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
