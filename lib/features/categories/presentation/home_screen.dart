@@ -575,10 +575,11 @@ class _UserHomeTabState extends State<_UserHomeTab> {
   }
 
   Widget _buildBannerCarousel(BannerProvider banners) {
+    final isTablet = MediaQuery.of(context).size.width > 600;
     return SliverToBoxAdapter(
       child: Container(
         margin: const EdgeInsets.only(top: 8),
-        height: 150,
+        height: isTablet ? 250 : 150,
         child: Column(
           children: [
             Expanded(
@@ -931,7 +932,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 Icon(Icons.local_fire_department_rounded,
                     color: AppColors.error, size: 18),
                 const SizedBox(width: 6),
-                const Text('Popular Products', style: _sectionTitleStyle),
+                const Text('Most Searched Products', style: _sectionTitleStyle),
               ],
             ),
             const SizedBox(height: 10),
@@ -959,6 +960,8 @@ class _UserHomeTabState extends State<_UserHomeTab> {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
+    final isTablet = MediaQuery.of(context).size.width > 600;
+
     return SliverToBoxAdapter(
       child: Container(
         color: Colors.white,
@@ -968,35 +971,11 @@ class _UserHomeTabState extends State<_UserHomeTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.local_fire_department_rounded,
-                        color: AppColors.error, size: 18),
-                    const SizedBox(width: 6),
-                    const Text('Categories', style: _sectionTitleStyle),
-                  ],
-                ),
-                TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ProductListScreen()),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(50, 30),
-                  ),
-                  child: Text(
-                    'View All',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
+                Icon(Icons.category_rounded,
+                    color: AppColors.primary, size: 18),
+                const SizedBox(width: 6),
+                const Text('Categories', style: _sectionTitleStyle),
               ],
             ),
             const SizedBox(height: 4),
@@ -1004,17 +983,35 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 ? const SizedBox(
                     height: 300,
                     child: Center(child: CircularProgressIndicator()))
-                : ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    scrollDirection: Axis.vertical,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: categories.parentCategories.length,
-                    itemBuilder: (context, index) {
-                      final category = categories.parentCategories[index];
-                      return _FullWidthCategoryCard(category: category);
-                    },
-                  ),
+                : isTablet
+                    ? GridView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 1.6,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: categories.parentCategories.length,
+                        itemBuilder: (context, index) {
+                          final category = categories.parentCategories[index];
+                          return _FullWidthCategoryCard(category: category);
+                        },
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        scrollDirection: Axis.vertical,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: categories.parentCategories.length,
+                        itemBuilder: (context, index) {
+                          final category = categories.parentCategories[index];
+                          return _FullWidthCategoryCard(category: category);
+                        },
+                      ),
           ],
         ),
       ),
@@ -1707,71 +1704,68 @@ class _FullWidthCategoryCard extends StatelessWidget {
     final displayImages = images.take(9).toList();
 
     if (displayImages.length == 1) {
-      // Single image - full width with padding and border radius
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            displayImages[0],
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (_, __, ___) => Container(
-              color: color.withOpacity(0.1),
-              child: Icon(_getCategoryIcon(), color: color, size: 50),
-            ),
-          ),
+      // Single image - full width without padding
+      return Image.network(
+        displayImages[0],
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => Container(
+          color: color.withOpacity(0.1),
+          child: Icon(_getCategoryIcon(), color: color, size: 50),
         ),
       );
     } else if (displayImages.length == 2) {
-      // Two images - side by side with spacing and border radius
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          children: displayImages
-              .map((img) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          height: double.infinity,
-                          child: Image.network(
-                            img,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: color.withOpacity(0.1),
-                              child: Icon(_getCategoryIcon(),
-                                  color: color.withOpacity(0.5), size: 40),
-                            ),
-                          ),
-                        ),
+      // Two images - side by side without padding
+      return Row(
+        children: displayImages
+            .map((img) => Expanded(
+                  child: Container(
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: displayImages.indexOf(img) == 0
+                            ? BorderSide(
+                                color: Colors.white.withOpacity(0.5), width: 1)
+                            : BorderSide.none,
                       ),
                     ),
-                  ))
-              .toList(),
-        ),
+                    child: Image.network(
+                      img,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: color.withOpacity(0.1),
+                        child: Icon(_getCategoryIcon(),
+                            color: color.withOpacity(0.5), size: 40),
+                      ),
+                    ),
+                  ),
+                ))
+            .toList(),
       );
     } else {
-      // 3+ images - Grid layout with 3x3 cells and border radius
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 6,
-            crossAxisSpacing: 6,
-            childAspectRatio: 1.5,
-          ),
-          itemCount: displayImages.length,
-          itemBuilder: (context, index) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
+      // 3+ images - Grid layout with 3x3 cells without padding, filling space
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final int rowCount = (displayImages.length / 3).ceil();
+          final double itemWidth = constraints.maxWidth / 3;
+          final double itemHeight = constraints.maxHeight / rowCount;
+          final double aspectRatio = itemWidth / itemHeight;
+
+          return GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 2,
+              crossAxisSpacing: 2,
+              childAspectRatio: aspectRatio,
+            ),
+            padding: EdgeInsets.zero,
+            itemCount: displayImages.length,
+            itemBuilder: (context, index) {
+              return Image.network(
                 displayImages[index],
                 fit: BoxFit.cover,
                 width: double.infinity,
@@ -1781,10 +1775,10 @@ class _FullWidthCategoryCard extends StatelessWidget {
                   child: Icon(_getCategoryIcon(),
                       color: color.withOpacity(0.5), size: 24),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          );
+        },
       );
     }
   }

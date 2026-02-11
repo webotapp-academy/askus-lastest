@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../core/constants/app_theme.dart';
+
 import 'login_screen.dart';
+import 'register_screen.dart';
 import 'vendor_register_screen.dart';
 
 class AccountTypeSelectionScreen extends StatefulWidget {
   const AccountTypeSelectionScreen({super.key});
 
   @override
-  State<AccountTypeSelectionScreen> createState() => _AccountTypeSelectionScreenState();
+  State<AccountTypeSelectionScreen> createState() =>
+      _AccountTypeSelectionScreenState();
 }
 
 class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
@@ -57,7 +59,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginScreen(),
+            const RegisterScreen(), // Changed to RegisterScreen
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
@@ -75,6 +77,23 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             const VendorRegisterScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
+  void _onSignInSelected() {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const LoginScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
@@ -176,7 +195,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                       ),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: _onUserSelected,
+                        onPressed: _onSignInSelected,
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
