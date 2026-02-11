@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/api/api_client.dart';
@@ -23,6 +26,13 @@ class ServiceListScreen extends StatefulWidget {
 class _ServiceListScreenState extends State<ServiceListScreen> {
   final _scrollController = ScrollController();
   final _api = ApiClient();
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _speechAvailable = false;
+  String? _currentLocaleId;
+  Timer? _silenceTimer;
 
   // Local state for filtered category view
   List<Service> _filteredServices = [];
@@ -33,7 +43,41 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   @override
   void initState() {
     super.initState();
+    _speech = stt.SpeechToText();
+    _initSpeech();
     _loadData();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          if (status == 'notListening' || status == 'done') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          debugPrint('Speech init error: $error');
+          setState(() => _isListening = false);
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _speechAvailable = available;
+      });
+      if (available) {
+        final sysLocale = await _speech.systemLocale();
+        if (!mounted) return;
+        setState(() {
+          _currentLocaleId = sysLocale?.localeId;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to initialize speech: $e');
+      setState(() {
+        _speechAvailable = false;
+      });
+    }
   }
 
   void _loadData() {
@@ -47,6 +91,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           context.read<CategoryProvider>().fetchCategories();
           context.read<ServiceProvider>().fetchServices(refresh: true);
         }
+        // Fetch all subcategories for all categories
+        final categories = context.read<CategoryProvider>().categories;
+        for (final category in categories) {
+          context.read<CategoryProvider>().fetchSubcategories(category.id);
+        }
       }
     });
   }
@@ -59,29 +108,179 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       _filteredServices = [];
     });
 
-    final params = {
-      'category_id': widget.categoryId.toString(),
-    };
+    try {
+      final params = {
+        'category_id': widget.categoryId.toString(),
+      };
 
-    final response = await _api.get(ApiConstants.services, params: params);
+      final response = await _api.get(ApiConstants.services, params: params);
 
-    if (response.success && response.data != null) {
-      final List<dynamic> data = response.data!['services'] ?? [];
-      final services = data.map((json) => Service.fromJson(json)).toList();
+      if (response.success && response.data != null) {
+        final List<dynamic> data =
+            response.data!['services'] ?? response.data!['data'] ?? [];
+        final services = data.map((json) => Service.fromJson(json)).toList();
 
-      setState(() {
-        _filteredServices = services;
-        _isLoadingFiltered = false;
-      });
-    } else {
+        setState(() {
+          _filteredServices = services;
+          _isLoadingFiltered = false;
+        });
+      } else {
+        setState(() => _isLoadingFiltered = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(response.message ?? 'Failed to load services')),
+          );
+        }
+      }
+    } catch (e) {
       setState(() => _isLoadingFiltered = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 
   @override
   void dispose() {
+    _silenceTimer?.cancel();
+    if (_isListening) {
+      _speech.stop();
+    }
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _startListening() async {
+    // Check microphone permission first
+    final micPermission = await Permission.microphone.status;
+
+    if (micPermission.isDenied) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted) {
+        if (!mounted) return;
+        _showPermissionDialog();
+        return;
+      }
+    } else if (micPermission.isPermanentlyDenied) {
+      if (!mounted) return;
+      _showPermissionDialog();
+      return;
+    }
+
+    // Initialize speech if not available
+    if (!_speechAvailable) {
+      await _initSpeech();
+    }
+
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech recognition is not available on this device'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isListening = true);
+
+    _startSilenceTimer();
+
+    try {
+      await _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+
+          _resetSilenceTimer();
+
+          setState(() {
+            _searchController.text = result.recognizedWords;
+            _searchController.selection = TextSelection.fromPosition(
+              TextPosition(offset: _searchController.text.length),
+            );
+            _searchQuery = result.recognizedWords;
+          });
+
+          if (result.finalResult) {
+            _stopListening();
+          }
+        },
+        localeId: _currentLocaleId,
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: stt.ListenMode.confirmation,
+      );
+    } catch (e) {
+      debugPrint('Error starting speech recognition: $e');
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start voice recognition: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopListening() async {
+    _silenceTimer?.cancel();
+    try {
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    } catch (e) {
+      debugPrint('Error stopping speech recognition: $e');
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    }
+  }
+
+  void _startSilenceTimer() {
+    _silenceTimer?.cancel();
+    _silenceTimer = Timer(const Duration(seconds: 5), () {
+      if (_isListening) {
+        debugPrint('Auto-stopping listening after 5 seconds of silence');
+        _stopListening();
+      }
+    });
+  }
+
+  void _resetSilenceTimer() {
+    if (_isListening) {
+      _startSilenceTimer();
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Microphone Permission Required'),
+        content: const Text(
+          'This app needs microphone access to convert your voice to text for searching. '
+          'Please enable microphone permission in your device settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Group services by category
@@ -96,6 +295,132 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     return grouped;
   }
 
+  Widget _buildServiceCard(Service service) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ServiceDetailScreen(serviceId: service.id),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(10)),
+                child: Container(
+                  width: double.infinity,
+                  color: AppColors.background,
+                  child:
+                      service.thumbnail != null && service.thumbnail!.isNotEmpty
+                          ? Image.network(
+                              service.thumbnail!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.build_circle_outlined,
+                                size: 40,
+                                color: AppColors.textSecondary,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.build_circle_outlined,
+                              size: 40,
+                              color: AppColors.textSecondary,
+                            ),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      service.name,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    if (service.vendorName != null)
+                      Text(
+                        service.vendorName!,
+                        style: const TextStyle(
+                          fontSize: 8,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '₹${service.price.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                              color: AppColors.primary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star,
+                                size: 10, color: Colors.amber),
+                            Text(
+                              ' ${service.rating.toStringAsFixed(1)}',
+                              style: const TextStyle(fontSize: 9),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Service> _getFilteredServices(List<Service> services) {
+    if (_searchQuery.isEmpty) return services;
+    return services.where((service) {
+      final searchLower = _searchQuery.toLowerCase();
+      final descriptionMatch =
+          service.description.toLowerCase().contains(searchLower);
+      final categoryMatch =
+          (service.categoryName?.toLowerCase().contains(searchLower) ?? false);
+      return service.name.toLowerCase().contains(searchLower) ||
+          descriptionMatch ||
+          categoryMatch;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,10 +428,114 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       appBar: AppBar(
         title: Text(widget.categoryName ?? 'Services'),
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search services...',
+                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  prefixIcon: const Icon(Icons.search_rounded,
+                      color: AppColors.primary, size: 22),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_searchQuery.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              _searchController.clear();
+                              _searchQuery = '';
+                            });
+                          },
+                        ),
+                      IconButton(
+                        icon: Icon(
+                          _isListening ? Icons.mic : Icons.mic_none_rounded,
+                          color: _isListening
+                              ? AppColors.error
+                              : AppColors.primary,
+                          size: 22,
+                        ),
+                        onPressed:
+                            _isListening ? _stopListening : _startListening,
+                      ),
+                    ],
+                  ),
+                  border: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+          ),
+        ),
       ),
-      body: _isFilteredByCategory
-          ? _buildFilteredView()
-          : _buildCategoryWiseView(),
+      body: Column(
+        children: [
+          // Listening indicator banner
+          if (_isListening)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                border: Border(
+                  bottom: BorderSide(color: Colors.red.shade200, width: 1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.mic, color: Colors.red.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Listening... Speak now',
+                    style: TextStyle(
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.red.shade600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: _isFilteredByCategory
+                ? _buildFilteredView()
+                : _buildCategoryWiseView(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -115,17 +544,22 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       return const LoadingWidget();
     }
 
-    if (_filteredServices.isEmpty) {
+    final displayServices = _getFilteredServices(_filteredServices);
+
+    if (displayServices.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.build_circle_outlined,
+          children: [
+            const Icon(Icons.build_circle_outlined,
                 size: 60, color: AppColors.textSecondary),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              'No services found',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              _searchQuery.isEmpty
+                  ? 'No services found'
+                  : 'No services match your search',
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
           ],
         ),
@@ -139,14 +573,14 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          childAspectRatio: 0.58,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          childAspectRatio: 0.65,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
         ),
-        itemCount: _filteredServices.length,
+        itemCount: displayServices.length,
         itemBuilder: (context, index) {
-          final service = _filteredServices[index];
-          return _ServiceGridCard(service: service);
+          final service = displayServices[index];
+          return _buildServiceCard(service);
         },
       ),
     );
@@ -159,26 +593,53 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           return const LoadingWidget();
         }
 
-        if (serviceProvider.services.isEmpty) {
+        // Show error if loading failed
+        if (serviceProvider.error != null && serviceProvider.services.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.build_circle_outlined,
-                    size: 60, color: AppColors.textSecondary),
-                SizedBox(height: 12),
+              children: [
+                const Icon(Icons.error_outline,
+                    size: 60, color: AppColors.error),
+                const SizedBox(height: 12),
                 Text(
-                  'No services found',
-                  style:
-                      TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  'Error: ${serviceProvider.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.error, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => serviceProvider.fetchServices(refresh: true),
+                  child: const Text('Retry'),
                 ),
               ],
             ),
           );
         }
 
-        final groupedServices =
-            _groupServicesByCategory(serviceProvider.services);
+        final filteredServices = _getFilteredServices(serviceProvider.services);
+
+        if (filteredServices.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.build_circle_outlined,
+                    size: 60, color: AppColors.textSecondary),
+                const SizedBox(height: 12),
+                Text(
+                  _searchQuery.isEmpty
+                      ? 'No services found'
+                      : 'No services match your search',
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 14),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final groupedServices = _groupServicesByCategory(filteredServices);
         final categories = categoryProvider.categories;
 
         return RefreshIndicator(
@@ -301,7 +762,7 @@ class _CategorySection extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SizedBox(
             height: 180,
             child: ListView.builder(
@@ -398,125 +859,6 @@ class _ServiceCard extends StatelessWidget {
                     const Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '₹${service.price.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              color: AppColors.primary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star,
-                                size: 12, color: Colors.amber),
-                            Text(
-                              ' ${service.rating.toStringAsFixed(1)}',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ServiceGridCard extends StatelessWidget {
-  final Service service;
-
-  const _ServiceGridCard({required this.service});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ServiceDetailScreen(serviceId: service.id),
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(10)),
-                child: Container(
-                  width: double.infinity,
-                  color: AppColors.background,
-                  child:
-                      service.thumbnail != null && service.thumbnail!.isNotEmpty
-                          ? Image.network(
-                              service.thumbnail!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.build_circle_outlined,
-                                size: 40,
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.build_circle_outlined,
-                              size: 40,
-                              color: AppColors.textSecondary,
-                            ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      service.name,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    if (service.vendorName != null)
-                      Text(
-                        service.vendorName!,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Flexible(
                           child: Text(

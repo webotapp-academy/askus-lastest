@@ -5,6 +5,8 @@ class Service {
   final String? vendorName;
   final int categoryId;
   final String? categoryName;
+  final int? subcategoryId;
+  final String? subcategoryName;
   final String name;
   final String slug;
   final String description;
@@ -25,6 +27,8 @@ class Service {
     this.vendorName,
     required this.categoryId,
     this.categoryName,
+    this.subcategoryId,
+    this.subcategoryName,
     required this.name,
     required this.slug,
     required this.description,
@@ -63,6 +67,8 @@ class Service {
       vendorName: json['vendor_name'] ?? json['store_name'],
       categoryId: json['category_id'] ?? 0,
       categoryName: json['category_name'],
+      subcategoryId: json['subcategory_id'] != null ? int.tryParse(json['subcategory_id'].toString()) : null,
+      subcategoryName: json['subcategory_name'],
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
       description: json['description'] ?? '',

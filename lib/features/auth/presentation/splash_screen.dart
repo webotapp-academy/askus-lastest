@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../data/auth_provider.dart';
-import 'login_screen.dart';
+import 'account_type_selection_screen.dart';
 import '../../location/presentation/location_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -22,29 +22,101 @@ class _SplashScreenState extends State<SplashScreen>
   bool _hasNavigated = false;
 
   final List<_TileData> _tiles = [
-    _TileData('https://images.unsplash.com/photo-1580901369227-308f6f40bdeb?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFe94560), 0, 0, 2, 2,
+    _TileData(
+        'https://images.unsplash.com/photo-1580901369227-308f6f40bdeb?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFFe94560),
+        0,
+        0,
+        2,
+        2,
         const Offset(-2, -2)), // Excavator
-    _TileData('https://images.unsplash.com/photo-1694521787193-9293daeddbaa?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF0f4c75), 2, 0, 1,
-        1, const Offset(2, -1)), // Construction workers
-    _TileData('https://plus.unsplash.com/premium_photo-1664302293475-aafd35d6abf6?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF3282b8), 2, 1, 1, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1694521787193-9293daeddbaa?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFF0f4c75),
+        2,
+        0,
+        1,
+        1,
+        const Offset(2, -1)), // Construction workers
+    _TileData(
+        'https://plus.unsplash.com/premium_photo-1664302293475-aafd35d6abf6?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFF3282b8),
+        2,
+        1,
+        1,
+        1,
         const Offset(2, 1)), // Tools
-    _TileData('https://images.unsplash.com/photo-1630288213265-64e4673b6f49?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF00b894), 0, 2, 1, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1630288213265-64e4673b6f49?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFF00b894),
+        0,
+        2,
+        1,
+        1,
         const Offset(-2, 0)), // Bulldozer
-    _TileData('https://images.unsplash.com/photo-1660367439240-d38cb03a4365?q=80&w=1173&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFfdcb6e), 1, 2, 1, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1660367439240-d38cb03a4365?q=80&w=1173&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFFfdcb6e),
+        1,
+        2,
+        1,
+        1,
         const Offset(0, -2)), // Construction site
-    _TileData('https://images.unsplash.com/photo-1760445726817-74664c6c1703?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFe17055), 2, 2, 1, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1760445726817-74664c6c1703?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFFe17055),
+        2,
+        2,
+        1,
+        1,
         const Offset(2, 0)), // Crane
-    _TileData('https://images.unsplash.com/photo-1763272594463-b56b1a82ed62?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF6c5ce7), 0, 3, 1, 2,
+    _TileData(
+        'https://images.unsplash.com/photo-1763272594463-b56b1a82ed62?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFF6c5ce7),
+        0,
+        3,
+        1,
+        2,
         const Offset(-2, 1)), // Construction helmet
-    _TileData('https://plus.unsplash.com/premium_photo-1677707394493-09962b13b675?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF00cec9), 1, 3, 1, 1,
+    _TileData(
+        'https://plus.unsplash.com/premium_photo-1677707394493-09962b13b675?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFF00cec9),
+        1,
+        3,
+        1,
+        1,
         const Offset(0, 2)), // Building structure
-    _TileData('https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=300&h=300&fit=crop', const Color(0xFFffeaa7), 2, 3, 1, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=300&h=300&fit=crop',
+        const Color(0xFFffeaa7),
+        2,
+        3,
+        1,
+        1,
         const Offset(2, 2)), // Electrical work
-    _TileData('https://images.unsplash.com/photo-1605910347035-59a2b94f2061?q=80&w=709&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFa29bfe), 1, 4, 1, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1605910347035-59a2b94f2061?q=80&w=709&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFFa29bfe),
+        1,
+        4,
+        1,
+        1,
         const Offset(0, 2)), // Plumbing
-    _TileData('https://plus.unsplash.com/premium_photo-1663100854088-bd8ab87870a7?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFF74b9ff), 2, 4, 1, 2,
+    _TileData(
+        'https://plus.unsplash.com/premium_photo-1663100854088-bd8ab87870a7?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFF74b9ff),
+        2,
+        4,
+        1,
+        2,
         const Offset(2, 2)), // Forklift
-    _TileData('https://images.unsplash.com/photo-1610831499021-8d206e50bbb6?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', const Color(0xFFff7675), 0, 5, 2, 1,
+    _TileData(
+        'https://images.unsplash.com/photo-1610831499021-8d206e50bbb6?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        const Color(0xFFff7675),
+        0,
+        5,
+        2,
+        1,
         const Offset(-2, 2)), // Construction site aerial
   ];
 
@@ -53,6 +125,14 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _setupAnimations();
     _startAnimations();
+    // specific safety timer: if images take too long (e.g. > 8 seconds), force move on
+    // This prevents the "infinite spinner" if network images hang
+    Future.delayed(const Duration(seconds: 8), () {
+      if (mounted && !_hasNavigated) {
+        debugPrint('Splash: Image loading timed out, forcing navigation.');
+        _proceedToNavigation();
+      }
+    });
   }
 
   void _onImageLoaded() {
@@ -64,14 +144,20 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Check if all images are loaded
     if (_loadedImageCount >= _tiles.length && !_hasNavigated) {
-      _hasNavigated = true;
-      // Wait 4 seconds after all images loaded, then navigate
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) {
-          _checkAuth();
-        }
+      // All images loaded fine, wait a bit for effect then go
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _proceedToNavigation();
       });
     }
+  }
+
+  Future<void> _proceedToNavigation() async {
+    if (_hasNavigated) return;
+    _hasNavigated = true;
+
+    if (!mounted) return;
+
+    _checkAuth();
   }
 
   void _setupAnimations() {
@@ -134,13 +220,20 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
-    await authProvider.checkAuthStatus();
+    // Add try-catch block to prevent auth check failure from hanging the app
+    try {
+      await authProvider.checkAuthStatus();
+    } catch (e) {
+      debugPrint('Error checking auth status: $e');
+      // Assume not authenticated on error, or handle as needed
+      // But proceed to navigation
+    }
 
     if (!mounted) return;
 
     final nextScreen = authProvider.isAuthenticated
         ? const LocationScreen()
-        : const LoginScreen();
+        : const AccountTypeSelectionScreen();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -200,20 +293,20 @@ class _SplashScreenState extends State<SplashScreen>
                     return AnimatedBuilder(
                       animation: _tileAnimations[index],
                       builder: (context, child) {
-                          return Positioned(
-                            left: left +
-                                _tileAnimations[index].value.dx * screenWidth,
-                            top: top +
-                                _tileAnimations[index].value.dy * screenHeight,
-                            width: width,
-                            height: height,
-                            child: _BentoTile(
-                              imageUrl: tile.imageUrl,
-                              color: tile.color,
-                              onImageLoaded: _onImageLoaded,
-                            ),
-                          );
-                        },
+                        return Positioned(
+                          left: left +
+                              _tileAnimations[index].value.dx * screenWidth,
+                          top: top +
+                              _tileAnimations[index].value.dy * screenHeight,
+                          width: width,
+                          height: height,
+                          child: _BentoTile(
+                            imageUrl: tile.imageUrl,
+                            color: tile.color,
+                            onImageLoaded: _onImageLoaded,
+                          ),
+                        );
+                      },
                     );
                   }),
                 ),
@@ -317,7 +410,8 @@ class _SplashScreenState extends State<SplashScreen>
                               strokeWidth: 3,
                               backgroundColor: Colors.white.withAlpha(25),
                             ),
-                            if (_loadedImageCount > 0 && _loadedImageCount < _tiles.length)
+                            if (_loadedImageCount > 0 &&
+                                _loadedImageCount < _tiles.length)
                               Text(
                                 '${_loadedImageCount}/${_tiles.length}',
                                 style: const TextStyle(

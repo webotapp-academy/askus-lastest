@@ -14,7 +14,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -27,6 +28,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    // Reset any stale auth state (like stuck loading indicators) when entering login
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().resetStatus();
+    });
     _setupAnimations();
   }
 
@@ -40,7 +45,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
 
@@ -86,7 +92,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -395,8 +402,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               }
               // Check if it's a valid email or phone
               bool isEmail = value.contains('@');
-              bool isPhone = RegExp(r'^[0-9]{10,}$').hasMatch(value.replaceAll(RegExp(r'[^0-9]'), ''));
-              
+              bool isPhone = RegExp(r'^[0-9]{10,}$')
+                  .hasMatch(value.replaceAll(RegExp(r'[^0-9]'), ''));
+
               if (!isEmail && !isPhone) {
                 return 'Please enter a valid email or phone number';
               }
@@ -411,11 +419,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             obscureText: _obscurePassword,
             suffixIcon: IconButton(
               icon: Icon(
-                _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                _obscurePassword
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
                 color: AppColors.textSecondary,
                 size: 22,
               ),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -520,7 +531,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ),
           filled: true,
           fillColor: AppColors.background.withOpacity(0.3),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         ),
       ),
     );
@@ -564,7 +576,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.login_rounded, color: Colors.white, size: 24),
+                        Icon(Icons.login_rounded,
+                            color: Colors.white, size: 24),
                         SizedBox(width: 12),
                         Text(
                           'Sign In',
@@ -748,7 +761,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 child: ElevatedButton.icon(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const VendorRegisterScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const VendorRegisterScreen()),
                   ),
                   icon: const Icon(Icons.add_business_rounded, size: 22),
                   label: const Text(

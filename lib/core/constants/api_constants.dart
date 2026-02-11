@@ -22,8 +22,12 @@ class ApiConstants {
   static const String categories = '/categories/list.php';
   static const String categoryProducts = '/categories/products.php';
   static const String categoryServices = '/categories/services.php';
+  static const String subcategories = '/subcategories/list.php';
 
   static const String products = '/products/list.php';
+  // Products grouped by subcategory for a single category
+  static const String productsByCategorySubcategories =
+      '/products/by_category_subcategories.php';
   static const String productDetail = '/products/detail.php';
   static const String productCreate = '/products/create.php';
   static const String productUpdate = '/products/update.php';

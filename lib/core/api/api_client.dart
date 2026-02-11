@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -28,7 +30,24 @@ class ApiClient {
   String? _token;
 
   Future<String?> get token async {
-    _token ??= await _storage.read(key: 'auth_token');
+    if (_token != null) return _token;
+
+    try {
+      _token = await _storage.read(key: 'auth_token');
+    } on PlatformException catch (e) {
+      debugPrint('⚠️ Secure Storage Error (Likely corrupted data): $e');
+      debugPrint('🗑️ Clearing all secure storage to recover...');
+      try {
+        await _storage.deleteAll();
+      } catch (e) {
+        debugPrint('❌ Failed to clear storage: $e');
+      }
+      _token = null;
+    } catch (e) {
+      debugPrint('⚠️ General Storage Error: $e');
+      _token = null;
+    }
+
     return _token;
   }
 
@@ -64,7 +83,14 @@ class ApiClient {
       debugPrint('📋 Headers: ${await _headers()}');
       if (params != null) debugPrint('🔍 Params: $params');
 
-      final response = await http.get(uri, headers: await _headers());
+      final response = await http.get(uri, headers: await _headers()).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          debugPrint('⏰ GET Request timeout after 30 seconds');
+          throw TimeoutException(
+              'Request timeout - please check your internet connection');
+        },
+      );
 
       debugPrint('📥 API GET Response:');
       debugPrint('📊 Status Code: ${response.statusCode}');
@@ -73,7 +99,13 @@ class ApiClient {
       return _handleResponse(response);
     } catch (e) {
       debugPrint('❌ API GET Error: $e');
-      return ApiResponse(success: false, message: e.toString(), statusCode: 0);
+      String errorMessage = e.toString();
+      if (e.toString().contains('SocketException')) {
+        errorMessage = 'Network error - please check your internet connection';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Request timeout - server is taking too long to respond';
+      }
+      return ApiResponse(success: false, message: errorMessage, statusCode: 0);
     }
   }
 

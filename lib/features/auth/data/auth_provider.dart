@@ -41,6 +41,12 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void resetStatus() {
+    _status = AuthStatus.initial;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<bool> login(String identifier, String password) async {
     debugPrint('🔐 Starting login process...');
     debugPrint('🆔 Identifier: $identifier');
@@ -51,7 +57,7 @@ class AuthProvider extends ChangeNotifier {
 
     // Determine if identifier is email or phone
     bool isEmail = identifier.contains('@');
-    
+
     final response = await _api.post(ApiConstants.login, {
       if (isEmail) 'email': identifier else 'phone': identifier,
       'password': password,

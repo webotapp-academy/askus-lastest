@@ -12,7 +12,8 @@ import '../../products/presentation/product_detail_screen.dart';
 import '../../services/presentation/service_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String? initialQuery;
+  const SearchScreen({super.key, this.initialQuery});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -21,7 +22,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
   final _api = ApiClient();
-  
+
   List<Product> _products = [];
   List<Service> _services = [];
   bool _isLoading = false;
@@ -38,6 +39,10 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      _searchController.text = widget.initialQuery!;
+      _search(widget.initialQuery!);
+    }
     _searchController.addListener(_onSearchChanged);
     _speech = stt.SpeechToText();
     _initSpeech();
@@ -89,7 +94,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _startListening() async {
     // Check microphone permission first
     final micPermission = await Permission.microphone.status;
-    
+
     if (micPermission.isDenied) {
       final result = await Permission.microphone.request();
       if (!result.isGranted) {
@@ -107,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (!_speechAvailable) {
       await _initSpeech();
     }
-    
+
     if (!_speechAvailable) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,25 +125,25 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     setState(() => _isListening = true);
-    
+
     // Start silence timer - auto-stop after 5 seconds of no speech
     _startSilenceTimer();
-    
+
     try {
       await _speech.listen(
         onResult: (result) {
           if (!mounted) return;
-          
+
           // Reset silence timer on any speech activity
           _resetSilenceTimer();
-          
+
           setState(() {
             _searchController.text = result.recognizedWords;
             _searchController.selection = TextSelection.fromPosition(
               TextPosition(offset: _searchController.text.length),
             );
           });
-          
+
           if (result.finalResult) {
             _stopListening();
             _search(_searchController.text);
@@ -240,35 +245,37 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final response = await _api.get(ApiConstants.search, params: {
         'q': query.trim(),
         'type': _searchType,
       });
-      
+
       if (response.success && response.data != null) {
         final productsData = response.data!['products'] as List? ?? [];
         final servicesData = response.data!['services'] as List? ?? [];
-        
-        debugPrint('🔍 Search Response - Products count: ${productsData.length}');
-        debugPrint('🔍 Search Response - Services count: ${servicesData.length}');
-        
+
+        debugPrint(
+            '🔍 Search Response - Products count: ${productsData.length}');
+        debugPrint(
+            '🔍 Search Response - Services count: ${servicesData.length}');
+
         // Debug first product if available
         if (productsData.isNotEmpty) {
           debugPrint('🔍 First product data: ${productsData.first}');
         }
-        
+
         // Debug first service if available
         if (servicesData.isNotEmpty) {
           debugPrint('🔍 First service data: ${servicesData.first}');
         }
-        
+
         setState(() {
           _products = productsData.map((json) {
             try {
@@ -291,15 +298,17 @@ class _SearchScreenState extends State<SearchScreen> {
           _hasSearched = true;
           _isLoading = false;
         });
-        
+
         // Debug parsed products
         if (_products.isNotEmpty) {
-          debugPrint('✅ First parsed product: name=${_products.first.name}, price=${_products.first.price}, thumbnail=${_products.first.thumbnail}');
+          debugPrint(
+              '✅ First parsed product: name=${_products.first.name}, price=${_products.first.price}, thumbnail=${_products.first.thumbnail}');
         }
-        
+
         // Debug parsed services
         if (_services.isNotEmpty) {
-          debugPrint('✅ First parsed service: name=${_services.first.name}, price=${_services.first.price}, thumbnail=${_services.first.thumbnail}, images=${_services.first.images}');
+          debugPrint(
+              '✅ First parsed service: name=${_services.first.name}, price=${_services.first.price}, thumbnail=${_services.first.thumbnail}, images=${_services.first.images}');
         }
       } else {
         setState(() {
@@ -441,7 +450,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                            const Icon(Icons.error_outline,
+                                size: 48, color: AppColors.error),
                             const SizedBox(height: 16),
                             Text(
                               _errorMessage!,
@@ -461,7 +471,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.search, size: 64, color: AppColors.textSecondary),
+                                Icon(Icons.search,
+                                    size: 64, color: AppColors.textSecondary),
                                 SizedBox(height: 16),
                                 Text(
                                   'Search for products and services',
@@ -478,7 +489,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.search_off, size: 64, color: AppColors.textSecondary),
+                                    Icon(Icons.search_off,
+                                        size: 64,
+                                        color: AppColors.textSecondary),
                                     SizedBox(height: 16),
                                     Text(
                                       'No results found',
@@ -491,55 +504,70 @@ class _SearchScreenState extends State<SearchScreen> {
                                     SizedBox(height: 8),
                                     Text(
                                       'Try different keywords',
-                                      style: TextStyle(color: AppColors.textSecondary),
+                                      style: TextStyle(
+                                          color: AppColors.textSecondary),
                                     ),
                                   ],
                                 ),
                               )
-                    : ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          if (_products.isNotEmpty) ...[
-                            const Text(
-                              'Products',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 12),
-                            ...(_products.map((p) => _SearchResultCard(
-                              title: p.name,
-                              subtitle: p.vendorName ?? '',
-                              price: p.price,
-                              image: p.thumbnail ?? (p.images.isNotEmpty ? p.images.first : null),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ProductDetailScreen(productId: p.id),
-                                ),
+                            : ListView(
+                                padding: const EdgeInsets.all(16),
+                                children: [
+                                  if (_products.isNotEmpty) ...[
+                                    const Text(
+                                      'Products',
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ...(_products.map((p) => _SearchResultCard(
+                                          title: p.name,
+                                          subtitle: p.vendorName ?? '',
+                                          price: p.price,
+                                          image: p.thumbnail ??
+                                              (p.images.isNotEmpty
+                                                  ? p.images.first
+                                                  : null),
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  ProductDetailScreen(
+                                                      productId: p.id),
+                                            ),
+                                          ),
+                                        ))),
+                                    const SizedBox(height: 24),
+                                  ],
+                                  if (_services.isNotEmpty) ...[
+                                    const Text(
+                                      'Services',
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ...(_services.map((s) => _SearchResultCard(
+                                          title: s.name,
+                                          subtitle: s.vendorName ?? '',
+                                          price: s.price,
+                                          image: s.thumbnail ??
+                                              (s.images.isNotEmpty
+                                                  ? s.images.first
+                                                  : null),
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  ServiceDetailScreen(
+                                                      serviceId: s.id),
+                                            ),
+                                          ),
+                                        ))),
+                                  ],
+                                ],
                               ),
-                            ))),
-                            const SizedBox(height: 24),
-                          ],
-                          if (_services.isNotEmpty) ...[
-                            const Text(
-                              'Services',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 12),
-                            ...(_services.map((s) => _SearchResultCard(
-                              title: s.name,
-                              subtitle: s.vendorName ?? '',
-                              price: s.price,
-                              image: s.thumbnail ?? (s.images.isNotEmpty ? s.images.first : null),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ServiceDetailScreen(serviceId: s.id),
-                                ),
-                              ),
-                            ))),
-                          ],
-                        ],
-                      ),
           ),
         ],
       ),

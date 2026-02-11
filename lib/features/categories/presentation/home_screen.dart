@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../auth/data/auth_provider.dart';
 import '../../location/data/location_provider.dart';
 import '../data/category_provider.dart';
 import '../data/category_model.dart';
 import '../../products/presentation/product_list_screen.dart';
+import 'subcategory_list_screen.dart';
 import '../../services/presentation/service_list_screen.dart';
 import '../../services/presentation/service_detail_screen.dart';
 import '../../services/data/service_model.dart';
@@ -42,6 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   void _loadData() {
@@ -143,10 +152,189 @@ class _UserHomeTabState extends State<_UserHomeTab> {
   final PageController _bannerController = PageController();
   int _currentBannerIndex = 0;
 
+  // Voice search variables
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  bool _speechAvailable = false;
+  String? _currentLocaleId;
+  Timer? _silenceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
   @override
   void dispose() {
     _bannerController.dispose();
+    _silenceTimer?.cancel();
+    if (_isListening) {
+      _speech.stop();
+    }
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          if (status == 'notListening' || status == 'done') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          debugPrint('Speech init error: $error');
+          setState(() => _isListening = false);
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _speechAvailable = available;
+      });
+      if (available) {
+        final sysLocale = await _speech.systemLocale();
+        if (!mounted) return;
+        setState(() {
+          _currentLocaleId = sysLocale?.localeId;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to initialize speech: $e');
+      setState(() {
+        _speechAvailable = false;
+      });
+    }
+  }
+
+  Future<void> _startListening() async {
+    // Check microphone permission first
+    final micPermission = await Permission.microphone.status;
+
+    if (micPermission.isDenied) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted) {
+        if (!mounted) return;
+        _showPermissionDialog();
+        return;
+      }
+    } else if (micPermission.isPermanentlyDenied) {
+      if (!mounted) return;
+      _showPermissionDialog();
+      return;
+    }
+
+    // Initialize speech if not available
+    if (!_speechAvailable) {
+      await _initSpeech();
+    }
+
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech recognition is not available on this device'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isListening = true);
+
+    _startSilenceTimer();
+
+    try {
+      await _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+
+          _resetSilenceTimer();
+
+          if (result.finalResult) {
+            _stopListening();
+            if (result.recognizedWords.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SearchScreen(initialQuery: result.recognizedWords),
+                ),
+              );
+            }
+          }
+        },
+        localeId: _currentLocaleId,
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: stt.ListenMode.confirmation,
+      );
+    } catch (e) {
+      debugPrint('Error starting speech recognition: $e');
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start voice recognition: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopListening() async {
+    _silenceTimer?.cancel();
+    try {
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    } catch (e) {
+      debugPrint('Error stopping speech recognition: $e');
+      if (!mounted) return;
+      setState(() => _isListening = false);
+    }
+  }
+
+  void _startSilenceTimer() {
+    _silenceTimer?.cancel();
+    _silenceTimer = Timer(const Duration(seconds: 5), () {
+      if (_isListening) {
+        debugPrint('Auto-stopping listening after 5 seconds of silence');
+        _stopListening();
+      }
+    });
+  }
+
+  void _resetSilenceTimer() {
+    if (_isListening) {
+      _startSilenceTimer();
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Microphone Permission Required'),
+        content: const Text(
+          'This app needs microphone access to convert your voice to text for searching. '
+          'Please enable microphone permission in your device settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -169,6 +357,45 @@ class _UserHomeTabState extends State<_UserHomeTab> {
         child: CustomScrollView(
           slivers: [
             _buildAppBar(location),
+            if (_isListening)
+              SliverToBoxAdapter(
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.red.shade200, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.mic, color: Colors.red.shade600, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Listening... Speak now',
+                        style: TextStyle(
+                          color: Colors.red.shade600,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation(Colors.red.shade600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             _buildSearchBar(),
             if (banners.homeTopBanners.isNotEmpty)
               _buildBannerCarousel(banners),
@@ -229,7 +456,8 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         child: const Icon(
                                           Icons.question_answer_rounded,
@@ -239,7 +467,8 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                                       ),
                                       const SizedBox(width: 12),
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const Text(
                                             'Ask Us',
@@ -287,8 +516,6 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(Icons.keyboard_arrow_down,
-                            color: Colors.white70, size: 18),
                       ],
                     ),
                   ),
@@ -324,6 +551,14 @@ class _UserHomeTabState extends State<_UserHomeTab> {
               hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
               prefixIcon: Icon(Icons.search_rounded,
                   color: AppColors.primary, size: 22),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none_rounded,
+                  color: _isListening ? AppColors.error : AppColors.primary,
+                  size: 22,
+                ),
+                onPressed: _isListening ? _stopListening : _startListening,
+              ),
               border: InputBorder.none,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -461,7 +696,9 @@ class _UserHomeTabState extends State<_UserHomeTab> {
               ],
             ),
             if (categories.isLoading)
-              const SizedBox(height: 170, child: Center(child: CircularProgressIndicator()))
+              const SizedBox(
+                  height: 170,
+                  child: Center(child: CircularProgressIndicator()))
             else if (categories.error != null)
               SizedBox(
                 height: 170,
@@ -488,7 +725,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 height: 210,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.only(top: 4),
                   itemCount: categories.parentCategories.length,
                   itemBuilder: (context, index) {
                     final category = categories.parentCategories[index];
@@ -762,22 +999,21 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
             categories.isLoading
                 ? const SizedBox(
                     height: 300,
                     child: Center(child: CircularProgressIndicator()))
-                : SizedBox(
-                    height: categories.parentCategories.length * 280,
-                    child: ListView.builder(
-                      scrollDirection: Axis.vertical,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: categories.parentCategories.length,
-                      itemBuilder: (context, index) {
-                        final category = categories.parentCategories[index];
-                        return _FullWidthCategoryCard(category: category);
-                      },
-                    ),
+                : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    scrollDirection: Axis.vertical,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: categories.parentCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = categories.parentCategories[index];
+                      return _FullWidthCategoryCard(category: category);
+                    },
                   ),
           ],
         ),
@@ -1023,7 +1259,7 @@ class _CategoryCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ProductListScreen(
+          builder: (_) => SubcategoryListScreen(
               categoryId: category.id, categoryName: category.name),
         ),
       ),
@@ -1074,7 +1310,7 @@ class _CategoryCard extends StatelessWidget {
                   : Icon(_getCategoryIcon(), color: color, size: 40),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 4),
           SizedBox(
             width: 140,
             child: Text(
@@ -1239,21 +1475,13 @@ class _FullWidthCategoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Category description
-          Text(
-            category.description ?? category.name,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
+
           // Main category card with gallery inside
           GestureDetector(
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ProductListScreen(
+                builder: (_) => SubcategoryListScreen(
                     categoryId: category.id, categoryName: category.name),
               ),
             ),
@@ -1275,7 +1503,10 @@ class _FullWidthCategoryCard extends StatelessWidget {
                             errorBuilder: (_, __, ___) => Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [color.withAlpha(80), color.withAlpha(30)],
+                                  colors: [
+                                    color.withAlpha(80),
+                                    color.withAlpha(30)
+                                  ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -1292,7 +1523,10 @@ class _FullWidthCategoryCard extends StatelessWidget {
                         : Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [color.withAlpha(80), color.withAlpha(30)],
+                                colors: [
+                                  color.withAlpha(80),
+                                  color.withAlpha(30)
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -1306,13 +1540,13 @@ class _FullWidthCategoryCard extends StatelessWidget {
                             ),
                           ),
                   ),
-                  
+
                   // Gallery Images Grid (if available)
                   if (hasGalleryImages)
                     Positioned.fill(
                       child: _buildGalleryGrid(category.galleryImages, color),
                     ),
-                  
+
                   // Dark Gradient Overlay
                   Positioned.fill(
                     child: Container(
@@ -1328,7 +1562,7 @@ class _FullWidthCategoryCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
+
                   // Category Name at Bottom
                   Positioned(
                     bottom: 12,
@@ -1351,13 +1585,14 @@ class _FullWidthCategoryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  
+
                   // View All button at bottom right
                   Positioned(
                     bottom: 12,
                     right: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -1466,11 +1701,11 @@ class _FullWidthCategoryCard extends StatelessWidget {
     }
     return AppColors.primary;
   }
-  
+
   Widget _buildGalleryGrid(List<String> images, Color color) {
     // Limit to max 9 images for 3x3 grid
     final displayImages = images.take(9).toList();
-    
+
     if (displayImages.length == 1) {
       // Single image - full width with padding and border radius
       return Padding(
@@ -1494,27 +1729,30 @@ class _FullWidthCategoryCard extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(8.0),
         child: Row(
-          children: displayImages.map((img) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  height: double.infinity,
-                  child: Image.network(
-                    img,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: color.withOpacity(0.1),
-                      child: Icon(_getCategoryIcon(), color: color.withOpacity(0.5), size: 40),
+          children: displayImages
+              .map((img) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: double.infinity,
+                          child: Image.network(
+                            img,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: color.withOpacity(0.1),
+                              child: Icon(_getCategoryIcon(),
+                                  color: color.withOpacity(0.5), size: 40),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
-          )).toList(),
+                  ))
+              .toList(),
         ),
       );
     } else {
@@ -1540,7 +1778,8 @@ class _FullWidthCategoryCard extends StatelessWidget {
                 height: double.infinity,
                 errorBuilder: (_, __, ___) => Container(
                   color: color.withOpacity(0.1),
-                  child: Icon(_getCategoryIcon(), color: color.withOpacity(0.5), size: 24),
+                  child: Icon(_getCategoryIcon(),
+                      color: color.withOpacity(0.5), size: 24),
                 ),
               ),
             );

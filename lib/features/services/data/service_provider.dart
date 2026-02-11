@@ -26,21 +26,29 @@ class ServiceProvider extends ChangeNotifier {
     if (refresh) _services = [];
 
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
-    final params = {
-      if (categoryId != null) 'category_id': categoryId.toString(),
-    };
+    try {
+      final params = {
+        if (categoryId != null) 'category_id': categoryId.toString(),
+      };
 
-    final response = await _api.get(ApiConstants.services, params: params);
+      final response = await _api.get(ApiConstants.services, params: params);
 
-    if (response.success && response.data != null) {
-      final List<dynamic> data = response.data!['services'] ?? [];
-      _services = data.map((json) => Service.fromJson(json)).toList();
+      if (response.success && response.data != null) {
+        final List<dynamic> data = response.data!['services'] ?? response.data!['data'] ?? [];
+        _services = data.map((json) => Service.fromJson(json)).toList();
+        _error = null;
+      } else {
+        _error = response.message ?? 'Failed to fetch services';
+      }
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   Future<void> fetchServiceDetail(int id) async {
