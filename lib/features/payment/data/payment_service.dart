@@ -41,9 +41,13 @@ class PaymentService {
       debugPrint('📱 Phone: $phone');
       debugPrint('👤 Name: $name');
 
-      // Only send amount - user_id will be taken from authenticated session
+      // Send details to identify this as a registration payment
       final requestData = {
         'amount': amount,
+        'email': email,
+        'phone': phone,
+        'name': name,
+        'is_registration': true,
       };
 
       debugPrint('📤 Request data: $requestData');

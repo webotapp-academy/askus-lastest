@@ -6,6 +6,8 @@ class ApiConstants {
   static const String register = '/auth/register.php';
   static const String profile = '/auth/profile.php';
   static const String updateProfile = '/auth/update-profile.php';
+  static const String sendEmailOtp = '/auth/send-email-otp.php';
+  static const String resetPassword = '/auth/reset-password.php';
   static const String vendorRegister = '/auth/vendor-register.php';
   static const String vendorKyc = '/auth/vendor-kyc.php';
   static const String vendorLogin = '/auth/vendor-login.php';
@@ -61,6 +63,11 @@ class ApiConstants {
 
   static const String notifications = '/notifications/list.php';
   static const String notificationRead = '/notifications/read.php';
+
+  static const String subscriptionPlans = '/subscriptions/plans.php';
+  static const String subscriptionCreateOrder =
+      '/subscriptions/create_order.php';
+  static const String subscriptionPurchase = '/subscriptions/purchase.php';
 
   static const String search = '/search/index.php';
 

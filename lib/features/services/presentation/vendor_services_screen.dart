@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../auth/data/auth_provider.dart';
+import '../../products/data/product_provider.dart';
+import '../../subscriptions/presentation/subscription_plans_screen.dart';
 import '../data/service_provider.dart';
 import '../data/service_model.dart';
 import 'create_service_screen.dart';
@@ -32,6 +34,52 @@ class _VendorServicesScreenState extends State<VendorServicesScreen> {
   bool _isVendorApproved(BuildContext context) {
     final user = context.read<AuthProvider>().user;
     return user?.vendorProfile?.status == 'approved';
+  }
+
+  bool _checkSubscriptionLimit(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final products = context.read<ProductProvider>();
+    final services = context.read<ServiceProvider>();
+
+    final user = auth.user;
+    final vendorProfile = user?.vendorProfile;
+    final hasPlan = vendorProfile?.currentPlanId != null;
+    final maxListings = vendorProfile?.maxListings ?? 0;
+    final currentListings =
+        products.vendorProducts.length + services.vendorServices.length;
+
+    if (!hasPlan) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'No active subscription plan found. Please subscribe to list items.'),
+          backgroundColor: AppColors.error,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SubscriptionPlansScreen()),
+      );
+      return false;
+    }
+
+    if (currentListings >= maxListings) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Listing limit reached for your current plan. Please upgrade to add more.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SubscriptionPlansScreen()),
+      );
+      return false;
+    }
+
+    return true;
   }
 
   void _showPendingApprovalMessage() {
@@ -74,6 +122,11 @@ class _VendorServicesScreenState extends State<VendorServicesScreen> {
                 _showPendingApprovalMessage();
                 return;
               }
+
+              if (!_checkSubscriptionLimit(context)) {
+                return;
+              }
+
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CreateServiceScreen()),

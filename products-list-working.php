@@ -68,10 +68,12 @@ try {
                 p.created_at
               FROM products p
               LEFT JOIN users u ON p.vendor_id = u.id
+              LEFT JOIN vendors v ON p.vendor_id = v.id
+              LEFT JOIN subscription_plans sp ON v.current_plan_id = sp.id AND (v.plan_expires_at IS NULL OR v.plan_expires_at > NOW())
               LEFT JOIN categories c ON p.category_id = c.id
               LEFT JOIN subcategories s ON p.subcategory_id = s.id
               $where
-              ORDER BY p.is_featured DESC, p.created_at DESC
+              ORDER BY sp.has_top_placement DESC, p.is_featured DESC, p.created_at DESC
               LIMIT ? OFFSET ?";
     
     $stmt = $pdo->prepare($query);

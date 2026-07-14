@@ -21,14 +21,21 @@ class Banner {
 
   factory Banner.fromJson(Map<String, dynamic> json) {
     return Banner(
-      id: json['id'] ?? 0,
+      id: _parseInt(json['id']),
       title: json['title'],
       image: json['image'] ?? '',
       mobileImage: json['mobile_image'],
       linkType: json['link_type'] ?? 'none',
       linkValue: json['link_value'],
       position: json['position'] ?? 'home_top',
-      sortOrder: json['sort_order'] ?? 0,
+      sortOrder: _parseInt(json['sort_order']),
     );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

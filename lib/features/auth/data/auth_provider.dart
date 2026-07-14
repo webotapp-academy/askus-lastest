@@ -198,6 +198,7 @@ class AuthProvider extends ChangeNotifier {
     required String city,
     required String state,
     required String pincode,
+    required String vendorType,
     String? gstNumber,
     String? panNumber,
   }) async {
@@ -206,7 +207,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     debugPrint('🏪 Starting vendor registration validation...');
-    debugPrint('👤 Owner: $name, Store: $storeName');
+    debugPrint('👤 Owner: $name, Store: $storeName, Type: $vendorType');
     debugPrint('📧 Email: $email, Phone: $phone');
 
     final response = await _api.post(ApiConstants.vendorRegister, {
@@ -219,6 +220,7 @@ class AuthProvider extends ChangeNotifier {
       'city': city,
       'state': state,
       'pincode': pincode,
+      'vendor_type': vendorType,
       if (gstNumber != null && gstNumber.isNotEmpty) 'gst_number': gstNumber,
       if (panNumber != null && panNumber.isNotEmpty) 'pan_number': panNumber,
     });
@@ -253,6 +255,8 @@ class AuthProvider extends ChangeNotifier {
     required String state,
     required String pincode,
     required String paymentId,
+    required String vendorType,
+    String? planId,
     String? gstNumber,
     String? panNumber,
   }) async {
@@ -262,7 +266,7 @@ class AuthProvider extends ChangeNotifier {
 
     debugPrint('🏪 Creating vendor in database after payment verification...');
     debugPrint('💳 Payment ID: $paymentId');
-    debugPrint('👤 Owner: $name, Store: $storeName');
+    debugPrint('👤 Owner: $name, Store: $storeName, Type: $vendorType, Plan: $planId');
 
     final response = await _api.post('/auth/create-vendor-after-payment.php', {
       'owner_name': name,
@@ -275,6 +279,8 @@ class AuthProvider extends ChangeNotifier {
       'state': state,
       'pincode': pincode,
       'payment_id': paymentId,
+      'vendor_type': vendorType,
+      'plan_id': planId,
       if (gstNumber != null && gstNumber.isNotEmpty) 'gst_number': gstNumber,
       if (panNumber != null && panNumber.isNotEmpty) 'pan_number': panNumber,
     });
@@ -302,9 +308,15 @@ class AuthProvider extends ChangeNotifier {
 
         _user = User.fromJson(userData);
 
+        // ✅ CRITICAL FIX: Force refresh to get latest vendor profile with subscription
+        // This ensures current_plan_id, max_listings, etc. are loaded
+        debugPrint('🔄 Refreshing vendor profile to get subscription details...');
+        await checkAuthStatus();
+
         _status = AuthStatus.authenticated;
         notifyListeners();
         debugPrint('✅ Vendor created successfully after payment!');
+        debugPrint('📋 Vendor profile: currentPlanId=${_user?.vendorProfile?.currentPlanId}, maxListings=${_user?.vendorProfile?.maxListings}');
         return true;
       } catch (e) {
         _error = 'Failed to process vendor creation response: $e';
@@ -331,6 +343,55 @@ class AuthProvider extends ChangeNotifier {
     }
     _error = response.message;
     return false;
+  }
+
+  Future<bool> sendResetOtp(String email) async {
+    _status = AuthStatus.loading;
+    _error = null;
+    notifyListeners();
+
+    debugPrint('📧 Requesting email OTP for password reset: $email');
+    final response = await _api.post(ApiConstants.sendEmailOtp, {
+      'email': email,
+    });
+
+    debugPrint('📨 Send Email OTP Response: Success=${response.success}, Message=${response.message}');
+    if (response.success) {
+      _status = AuthStatus.initial;
+      notifyListeners();
+      return true;
+    } else {
+      _error = response.message ?? 'Failed to send OTP';
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> performPasswordReset(
+      String email, String otp, String newPassword) async {
+    _status = AuthStatus.loading;
+    _error = null;
+    notifyListeners();
+
+    debugPrint('🔐 Submitting password reset request for: $email');
+    final response = await _api.post(ApiConstants.resetPassword, {
+      'email': email,
+      'otp': otp,
+      'new_password': newPassword,
+    });
+
+    debugPrint('📨 Reset Password Response: Success=${response.success}, Message=${response.message}');
+    if (response.success) {
+      _status = AuthStatus.initial;
+      notifyListeners();
+      return true;
+    } else {
+      _error = response.message ?? 'Failed to reset password';
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> logout() async {

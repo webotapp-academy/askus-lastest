@@ -111,11 +111,33 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     // Add haptic feedback
     HapticFeedback.lightImpact();
 
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    
+    // Generate name from email prefix
+    String generatedName = '';
+    if (email.contains('@')) {
+      final prefix = email.split('@')[0];
+      // Replace dots/dashes/underscores with space and capitalize words
+      generatedName = prefix
+          .replaceAll(RegExp(r'[\._-]'), ' ')
+          .split(' ')
+          .map((word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1)}'
+              : '')
+          .join(' ')
+          .trim();
+    }
+    
+    if (generatedName.isEmpty) {
+      generatedName = 'User ${phone.length >= 4 ? phone.substring(phone.length - 4) : phone}';
+    }
+
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.register(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      phone: _phoneController.text.trim(),
+      name: generatedName,
+      email: email,
+      phone: phone,
       password: _passwordController.text,
     );
     
@@ -418,24 +440,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       padding: const EdgeInsets.all(28),
       child: Column(
         children: [
-          // Full Name Field
-          _buildTextField(
-            controller: _nameController,
-            label: 'Full Name',
-            icon: Icons.person_outline_rounded,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your full name';
-              }
-              if (value.trim().split(' ').length < 2) {
-                return 'Please enter your first and last name';
-              }
-              return null;
-            },
-          ),
-          
-          const SizedBox(height: 20),
-          
           // Email Field
           _buildTextField(
             controller: _emailController,
@@ -498,32 +502,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
               }
               if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
                 return 'Password must contain uppercase, lowercase and number';
-              }
-              return null;
-            },
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Confirm Password Field
-          _buildTextField(
-            controller: _confirmPasswordController,
-            label: 'Confirm Password',
-            icon: Icons.lock_outline_rounded,
-            obscureText: _obscureConfirmPassword,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                color: AppColors.textSecondary,
-              ),
-              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please confirm your password';
-              }
-              if (value != _passwordController.text) {
-                return 'Passwords do not match';
               }
               return null;
             },

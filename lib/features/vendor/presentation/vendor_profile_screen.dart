@@ -5,7 +5,6 @@ import '../../auth/data/auth_provider.dart';
 import '../../auth/presentation/login_screen.dart';
 import 'kyc_upload_screen.dart';
 import '../../products/presentation/vendor_products_screen.dart';
-import '../../services/presentation/vendor_services_screen.dart';
 import '../../enquiries/presentation/enquiry_list_screen.dart';
 
 class VendorProfileScreen extends StatefulWidget {
@@ -26,7 +25,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(user?.name ?? 'Vendor', vendor?.storeName ?? 'Store'),
+          _buildAppBar(
+              user?.name ?? 'Vendor', vendor?.storeName ?? 'Store', vendor),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -49,7 +49,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     );
   }
 
-  Widget _buildAppBar(String name, String storeName) {
+  Widget _buildAppBar(String name, String storeName, dynamic vendor) {
     return SliverAppBar(
       expandedHeight: 200,
       floating: false,
@@ -107,6 +107,22 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                 Text(storeName,
                     style: TextStyle(
                         color: Colors.white.withAlpha(200), fontSize: 14)),
+                if (vendor?.isVerifiedLocal == true ||
+                    vendor?.isFoundingMember == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (vendor?.isVerifiedLocal == true)
+                          _buildHeaderBadge('Verified Local', Icons.verified,
+                              AppColors.success),
+                        if (vendor?.isFoundingMember == true)
+                          _buildHeaderBadge('Founding Member',
+                              Icons.military_tech, Colors.amber),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -121,6 +137,28 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                   builder: (_) => const EditVendorProfileScreen())),
         ),
       ],
+    );
+  }
+
+  Widget _buildHeaderBadge(String label, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(40),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(150)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
@@ -187,8 +225,36 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                 ),
             ],
           ),
+          if (vendor?.isVerified == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  if (vendor?.isVerifiedLocal == true)
+                    _buildBadgeChip(
+                        'Verified Local', Icons.verified, AppColors.success),
+                  if (vendor?.isFoundingMember == true)
+                    _buildBadgeChip(
+                        'Founding Member', Icons.military_tech, Colors.amber),
+                ],
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBadgeChip(String label, IconData icon, Color color) {
+    return Chip(
+      avatar: Icon(icon, size: 14, color: color),
+      label: Text(label,
+          style: TextStyle(
+              fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+      backgroundColor: color.withAlpha(25),
+      side: BorderSide(color: color.withAlpha(100)),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
     );
   }
 
@@ -222,12 +288,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
               MaterialPageRoute(builder: (_) => const VendorProductsScreen()),
             );
           }),
-          _buildMenuItem(Icons.build_circle, 'My Services', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const VendorServicesScreen()),
-            );
-          }),
+
           _buildMenuItem(Icons.mail, 'Enquiries', () {
             Navigator.push(
               context,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import '../../location/data/location_provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/api_constants.dart';
@@ -252,9 +254,13 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
+      final locationProvider = context.read<LocationProvider>();
+      final city = locationProvider.city;
+
       final response = await _api.get(ApiConstants.search, params: {
         'q': query.trim(),
         'type': _searchType,
+        if (city != null && city.isNotEmpty) 'city': city,
       });
 
       if (response.success && response.data != null) {
@@ -418,6 +424,34 @@ class _SearchScreenState extends State<SearchScreen> {
                 ],
               ),
             ),
+          Consumer<LocationProvider>(
+            builder: (context, locationProvider, _) {
+              final city = locationProvider.city;
+              if (city == null || city.isEmpty) return const SizedBox.shrink();
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.primary.withAlpha(10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Searching in: ',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                    Text(
+                      city,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(

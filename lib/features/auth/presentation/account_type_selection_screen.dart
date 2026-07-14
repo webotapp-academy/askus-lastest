@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/constants/app_theme.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import 'vendor_register_screen.dart';
@@ -172,8 +173,8 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                         onTap: _onVendorSelected,
                         gradient: const LinearGradient(
                           colors: [
-                            Color(0xFF4F46E5),
-                            Color(0xFF7C3AED),
+                            AppColors.primary,
+                            AppColors.secondary,
                           ],
                         ),
                       ),

@@ -36,7 +36,8 @@ class User {
       vendorProfile: json['vendor_profile'] != null
           ? VendorProfile.fromJson(json['vendor_profile'])
           : null,
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 
@@ -67,6 +68,15 @@ class VendorProfile {
   final String? panNumber;
   final String? fssaiNumber;
 
+  // New Fields for Subscriptions & Launch Strategy
+  final String vendorType;
+  final int? currentPlanId;
+  final int maxListings;
+  final int availableFeaturedDays;
+  final int availableBoostDays;
+  final bool isVerifiedLocal;
+  final bool isFoundingMember;
+
   VendorProfile({
     required this.id,
     required this.storeName,
@@ -87,6 +97,13 @@ class VendorProfile {
     this.gstNumber,
     this.panNumber,
     this.fssaiNumber,
+    this.vendorType = 'vendor',
+    this.currentPlanId,
+    this.maxListings = 0,
+    this.availableFeaturedDays = 0,
+    this.availableBoostDays = 0,
+    this.isVerifiedLocal = false,
+    this.isFoundingMember = false,
   });
 
   factory VendorProfile.fromJson(Map<String, dynamic> json) {
@@ -103,13 +120,31 @@ class VendorProfile {
       latitude: double.tryParse(json['latitude']?.toString() ?? ''),
       longitude: double.tryParse(json['longitude']?.toString() ?? ''),
       status: json['status']?.toString() ?? 'pending',
-      commissionRate: double.tryParse(json['commission_rate']?.toString() ?? '10') ?? 10,
+      commissionRate:
+          double.tryParse(json['commission_rate']?.toString() ?? '10') ?? 10,
       rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0,
       totalRatings: int.tryParse(json['total_ratings']?.toString() ?? '0') ?? 0,
-      isVerified: json['is_verified'] == 1 || json['is_verified'] == true || json['is_verified']?.toString() == 'true',
+      isVerified: json['is_verified'] == 1 ||
+          json['is_verified'] == true ||
+          json['is_verified']?.toString() == 'true',
       gstNumber: json['gst_number']?.toString(),
       panNumber: json['pan_number']?.toString(),
       fssaiNumber: json['fssai_number']?.toString(),
+      vendorType: json['vendor_type']?.toString() ?? 'vendor',
+      currentPlanId: json['current_plan_id'] != null
+          ? int.tryParse(json['current_plan_id']?.toString() ?? '')
+          : null,
+      maxListings: int.tryParse(json['max_listings']?.toString() ?? '0') ?? 0,
+      availableFeaturedDays:
+          int.tryParse(json['available_featured_days']?.toString() ?? '0') ?? 0,
+      availableBoostDays:
+          int.tryParse(json['available_boost_days']?.toString() ?? '0') ?? 0,
+      isVerifiedLocal: json['is_verified_local'] == 1 ||
+          json['is_verified_local'] == true ||
+          json['is_verified_local']?.toString() == 'true',
+      isFoundingMember: json['is_founding_member'] == 1 ||
+          json['is_founding_member'] == true ||
+          json['is_founding_member']?.toString() == 'true',
     );
   }
 }

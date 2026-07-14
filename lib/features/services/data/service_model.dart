@@ -60,6 +60,16 @@ class Service {
     }
     thumbnailValue = thumbnailValue ?? (imageList.isNotEmpty ? imageList.first : null);
 
+    // Handle price - try multiple field names
+    double priceValue = 0;
+    if (json['price'] != null && json['price'].toString().isNotEmpty) {
+      priceValue = double.tryParse(json['price'].toString()) ?? 0;
+    } else if (json['min_price'] != null && json['min_price'].toString().isNotEmpty) {
+      priceValue = double.tryParse(json['min_price'].toString()) ?? 0;
+    } else if (json['selling_price'] != null && json['selling_price'].toString().isNotEmpty) {
+      priceValue = double.tryParse(json['selling_price'].toString()) ?? 0;
+    }
+
     return Service(
       id: json['id'] ?? 0,
       uuid: json['uuid'] ?? '',
@@ -72,7 +82,7 @@ class Service {
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
       description: json['description'] ?? '',
-      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
+      price: priceValue,
       duration: json['duration'],
       thumbnail: thumbnailValue,
       images: imageList,

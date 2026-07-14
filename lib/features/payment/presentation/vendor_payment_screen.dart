@@ -76,13 +76,13 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
     try {
       debugPrint('🏪 Processing vendor registration payment...');
 
-      // ✅ Use vendor data from registration form, not authenticated user
-      // (user is not authenticated yet in the new flow)
+      // ✅ Use vendor data from registration form
       final vendorName = widget.vendorData['name'] as String?;
       final vendorEmail = widget.vendorData['email'] as String?;
       final vendorPhone = widget.vendorData['phone'] as String?;
+      final amount = widget.vendorData['plan_amount'] as double?;
 
-      if (vendorName == null || vendorEmail == null || vendorPhone == null) {
+      if (vendorName == null || vendorEmail == null || vendorPhone == null || amount == null) {
         if (mounted) {
           setState(() => _isProcessing = false);
         }
@@ -90,18 +90,16 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
         return;
       }
 
-      // Generate a temporary ID for the payment (vendor ID will be assigned after creation)
-      // Use a hash of email as temporary ID
+      // Generate a temporary ID for the payment
       final tempVendorId = vendorEmail.hashCode.toString().replaceAll('-', '');
 
       // Create payment order
       debugPrint('📞 Calling payment service...');
 
-      // Use compute or Future.delayed to prevent UI blocking
       await Future.delayed(const Duration(milliseconds: 100));
 
       final orderData = await _paymentService.createVendorRegistrationOrder(
-        amount: VendorRegistrationFee.totalAmount,
+        amount: amount,
         vendorId: tempVendorId,
         email: vendorEmail,
         phone: vendorPhone,
@@ -111,47 +109,6 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
       debugPrint('📦 Order data received: $orderData');
 
       if (orderData == null) {
-        debugPrint('❌ Order data is null - payment creation failed');
-        debugPrint(
-            '🔍 This means the API returned success=false or threw an error');
-        debugPrint('📋 Check the API logs above for the exact error message');
-        if (mounted) {
-          setState(() => _isProcessing = false);
-        }
-        _showError(
-            'Failed to create payment order. Please check your connection and try again.');
-        return;
-      }
-
-      debugPrint('✅ Order data is valid, preparing Razorpay options...');
-
-      // ⚠️ CRITICAL VALIDATION - Check all required fields
-      final razorpayKey = orderData['razorpay_key'];
-      final orderId = orderData['order_id'];
-      final amount = orderData['amount'];
-
-      debugPrint('🔍 Validating required fields...');
-      debugPrint(
-          '   Key: ${razorpayKey != null ? "✓ Present" : "✗ MISSING"} (${razorpayKey ?? "null"})');
-      debugPrint(
-          '   Order ID: ${orderId != null ? "✓ Present" : "✗ MISSING"} (${orderId ?? "null"})');
-      debugPrint(
-          '   Amount: ${amount != null ? "✓ Present" : "✗ MISSING"} (${amount ?? "null"})');
-
-      // Validate required fields
-      if (razorpayKey == null || razorpayKey.toString().isEmpty) {
-        debugPrint('❌ CRITICAL: Razorpay Key is missing from server response!');
-        debugPrint(
-            '📋 This will cause "Something went wrong" error in Razorpay checkout');
-        if (mounted) {
-          setState(() => _isProcessing = false);
-        }
-        _showError('Payment configuration error. Please contact support.');
-        return;
-      }
-
-      if (orderId == null || orderId.toString().isEmpty) {
-        debugPrint('❌ CRITICAL: Order ID is missing!');
         if (mounted) {
           setState(() => _isProcessing = false);
         }
@@ -159,57 +116,38 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
         return;
       }
 
-      if (amount == null) {
-        debugPrint('❌ CRITICAL: Amount is missing!');
+      final razorpayKey = orderData['razorpay_key'];
+      final orderId = orderData['order_id'];
+      final amountPaise = orderData['amount'];
+
+      if (razorpayKey == null || orderId == null || amountPaise == null) {
         if (mounted) {
           setState(() => _isProcessing = false);
         }
-        _showError('Payment amount error. Please try again.');
+        _showError('Payment configuration error. Please contact support.');
         return;
       }
 
-      // Validate key format
-      final keyStr = razorpayKey.toString();
-      if (!keyStr.startsWith('rzp_test_') && !keyStr.startsWith('rzp_live_')) {
-        debugPrint('❌ WARNING: Invalid Razorpay key format: $keyStr');
-        debugPrint('   Expected format: rzp_test_xxxxx or rzp_live_xxxxx');
-      }
-
-      // Prepare Razorpay options using vendor data
       final options = {
-        'key': keyStr,
-        'amount': amount is int ? amount : int.parse(amount.toString()),
+        'key': razorpayKey.toString(),
+        'amount': amountPaise is int ? amountPaise : int.parse(amountPaise.toString()),
         'currency': 'INR',
         'name': 'Ask Us Marketplace',
-        'description': 'Vendor Registration Fee',
+        'description': 'Vendor Registration - ${widget.vendorData['vendor_type']}',
         'order_id': orderId.toString(),
         'prefill': {
           'contact': vendorPhone,
           'email': vendorEmail,
           'name': vendorName,
         },
-        'theme': {
-          'color': '#2196F3',
-        },
+        'theme': {'color': '#2196F3'},
         'notes': {
           'vendor_id': tempVendorId,
-          'registration_type': 'vendor',
+          'registration_type': widget.vendorData['vendor_type'] ?? 'vendor',
+          'plan_id': widget.vendorData['plan_id']?.toString() ?? '',
         },
       };
 
-      debugPrint('🚀 Starting Razorpay payment...');
-      debugPrint('💳 Final Options:');
-      debugPrint('   ├─ key: ${options['key']}');
-      debugPrint(
-          '   ├─ amount: ${options['amount']} paise (₹${(options['amount'] as int) / 100})');
-      debugPrint('   ├─ currency: ${options['currency']}');
-      debugPrint('   ├─ order_id: ${options['order_id']}');
-      debugPrint('   ├─ prefill: ${options['prefill']}');
-      debugPrint('   └─ notes: ${options['notes']}');
-
-      // Start payment - don't set _isProcessing to false here
-      // It will be reset in the callbacks
-      // Store payment_id in vendorData for later use
       widget.vendorData['payment_id'] = orderData['payment_id']?.toString() ?? '';
       
       _paymentService.startPayment(
@@ -227,35 +165,21 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
             _handlePaymentError(response);
           }
         },
-        onExternalWallet: (ExternalWalletResponse response) {
-          debugPrint('💼 External wallet: ${response.walletName}');
-          if (mounted) {
-            setState(() => _isProcessing = false);
-          }
-        },
       );
-    } catch (e, stackTrace) {
-      debugPrint('❌ Payment processing error: $e');
-      debugPrint('📍 Stack trace: $stackTrace');
+    } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
         _showError('Payment processing failed. Please try again.');
       }
     }
-    // Note: Don't reset _isProcessing here - it will be reset in payment callbacks
   }
 
   Future<void> _handlePaymentSuccess(
       PaymentSuccessResponse response, String orderId) async {
-    debugPrint('✅ Payment successful, verifying...');
-
     final authProvider = context.read<AuthProvider>();
-    
-    // Use vendor data from registration form instead of authenticated user
     final vendorEmail = widget.vendorData['email'] as String?;
     final tempVendorId = (vendorEmail?.hashCode ?? 0).toString().replaceAll('-', '');
 
-    // Verify payment
     final verified = await _paymentService.verifyPayment(
       razorpayOrderId: response.orderId ?? '',
       razorpayPaymentId: response.paymentId ?? '',
@@ -266,17 +190,8 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
     if (!mounted) return;
 
     if (verified) {
-      debugPrint('✅ Payment verified, now creating vendor in database...');
-      
-      // Extract payment ID from the verification response or widget data
       String paymentId = widget.vendorData['payment_id']?.toString() ?? '';
       
-      if (paymentId.isEmpty) {
-        _showError('Payment ID not found. Please contact support.');
-        return;
-      }
-
-      // Create the vendor in database only after successful payment verification
       final registrationSuccess = await authProvider.createVendorAfterPayment(
         name: widget.vendorData['name'],
         email: widget.vendorData['email'],
@@ -288,6 +203,8 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
         state: widget.vendorData['state'],
         pincode: widget.vendorData['pincode'],
         paymentId: paymentId,
+        vendorType: widget.vendorData['vendor_type'] ?? 'vendor',
+        planId: widget.vendorData['plan_id']?.toString(), // Added planId
         gstNumber: widget.vendorData['gst_number']?.isNotEmpty == true 
             ? widget.vendorData['gst_number'] 
             : null,
@@ -299,15 +216,12 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
       if (!mounted) return;
 
       if (registrationSuccess) {
-        HapticFeedback.mediumImpact();
         _showSuccessDialog();
       } else {
-        HapticFeedback.heavyImpact();
-        _showError('Vendor registration failed. Please contact support: ${authProvider.error}');
+        _showError('Registration failed: ${authProvider.error}');
       }
     } else {
-      HapticFeedback.heavyImpact();
-      _showError('Payment verification failed. Please contact support.');
+      _showError('Payment verification failed.');
     }
   }
 
@@ -511,6 +425,7 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
   }
 
   Widget _buildPricingCard() {
+    final amount = widget.vendorData['plan_amount'] as double? ?? 0.0;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -530,35 +445,14 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Registration Fee',
+                'Subscription Plan',
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textSecondary,
                 ),
               ),
               Text(
-                '₹${VendorRegistrationFee.registrationFee.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'GST (18%)',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              Text(
-                '₹${VendorRegistrationFee.gstAmount.toStringAsFixed(0)}',
+                '₹${amount.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -580,7 +474,7 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
                 ),
               ),
               Text(
-                '₹${VendorRegistrationFee.totalAmount.toStringAsFixed(0)}',
+                '₹${amount.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -595,11 +489,18 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
   }
 
   Widget _buildFeaturesList() {
-    final features = [
-      'List unlimited products & services',
-      'Direct customer enquiries',
-      '24/7 customer support',
-    ];
+    final isWorker = widget.vendorData['vendor_type'] == 'worker';
+    final features = isWorker 
+      ? [
+          'List services in your area',
+          'Get direct customer calls',
+          'Verified worker badge',
+        ]
+      : [
+          'List products on marketplace',
+          'Manage inventory & orders',
+          'Trusted vendor status',
+        ];
 
     return Container(
       decoration: BoxDecoration(
@@ -618,7 +519,7 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'What you get:',
+            'Plan Benefits:',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -662,6 +563,7 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
   }
 
   Widget _buildPaymentButton() {
+    final amount = widget.vendorData['plan_amount'] as double? ?? 0.0;
     return Container(
       height: 56,
       decoration: BoxDecoration(
@@ -704,7 +606,7 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Pay ₹${VendorRegistrationFee.totalAmount.toStringAsFixed(0)}',
+                        'Pay ₹${amount.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,

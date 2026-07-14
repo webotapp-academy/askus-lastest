@@ -1,115 +1,83 @@
 <?php
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'askus');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-
-// Application configuration
-define('BASE_URL', 'http://localhost');
-define('UPLOAD_PATH', __DIR__ . '/uploads/');
-define('UPLOAD_URL', BASE_URL . '/uploads/');
-
-// API Configuration
-define('API_VERSION', 'v1');
-define('JWT_SECRET', 'your-jwt-secret-key-change-this');
-define('PAGINATION_DEFAULT_LIMIT', 20);
-define('PAGINATION_MAX_LIMIT', 100);
-
-// Razorpay configuration (if needed)
-define('RAZORPAY_KEY_ID', 'your_razorpay_key_id');
-define('RAZORPAY_KEY_SECRET', 'your_razorpay_key_secret');
-
 /**
- * Get database connection
- * @return PDO
- * @throws Exception
+ * config.php — Local copy, synced with live server (2026-03-17)
+ *
+ * IMPORTANT: This is the LIVE SERVER config.php content.
+ * DB_PASS and API keys are real — do not commit to public repos.
  */
-function getDBConnection() {
-    static $pdo = null;
-    
-    if ($pdo === null) {
-        try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-            ]);
-        } catch (PDOException $e) {
-            error_log("Database connection failed: " . $e->getMessage());
-            throw new Exception("Database connection failed");
-        }
-    }
-    
-    return $pdo;
-}
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-/**
- * Send JSON response
- * @param array $data
- * @param int $statusCode
- */
-function jsonResponse($data, $statusCode = 200) {
-    http_response_code($statusCode);
-    header('Content-Type: application/json');
-    echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
 
-/**
- * Set CORS headers
- */
-function setCORSHeaders() {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-    header('Access-Control-Max-Age: 3600');
+$dbUrl = getenv('DATABASE_URL');
+
+if ($dbUrl) {
+    $parsed = parse_url($dbUrl);
+    define('DB_HOST', $parsed['host']);
+    define('DB_PORT', $parsed['port'] ?? 5432);
+    define('DB_NAME', ltrim($parsed['path'], '/'));
+    define('DB_USER', $parsed['user']);
+    define('DB_PASS', $parsed['pass']);
+    define('DB_TYPE', 'pgsql');
+} else {
+    define('DB_HOST', 'localhost');
+    define('DB_PORT', 3306);
+    define('DB_NAME', 'askus');
+    define('DB_USER', 'askus');
+    define('DB_PASS', 'JAIhanuman89@@@');
+    define('DB_TYPE', 'mysql');
 }
 
-/**
- * Handle preflight OPTIONS request
- */
-function handlePreflight() {
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-        setCORSHeaders();
-        http_response_code(200);
-        exit;
-    }
-}
+define('JWT_SECRET', 'askus-jwt-secret-key-2024-production');
+define('JWT_EXPIRY', 86400 * 30);
 
-/**
- * Validate required fields in request data
- * @param array $data
- * @param array $requiredFields
- * @return array|null Returns array of missing fields or null if all present
- */
-function validateRequiredFields($data, $requiredFields) {
-    $missing = [];
-    foreach ($requiredFields as $field) {
-        if (!isset($data[$field]) || empty(trim($data[$field]))) {
-            $missing[] = $field;
+define('UPLOAD_DIR', __DIR__ . '/uploads/');
+define('UPLOAD_URL', 'https://indiawebdesigns.in/app/askus/api/uploads/');
+
+// Razorpay Configuration
+define('RAZORPAY_KEY_ID', 'rzp_live_Rr1ievS9AKmSno');
+define('RAZORPAY_KEY_SECRET', 'sD85eYTIjVahnVYZglBCumSf');
+
+date_default_timezone_set('Asia/Kolkata');
+
+function getDBConnection() {
+    static $pdo = null;
+    if ($pdo === null) {
+        try {
+            if (DB_TYPE === 'mysql') {
+                $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            } else {
+                $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
+            }
+            $options = [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
+            ];
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (PDOException $e) {
+            error_log("Database connection failed: " . $e->getMessage());
+            jsonResponse(['success' => false, 'message' => 'Database connection failed'], 500);
         }
     }
-    return empty($missing) ? null : $missing;
+    return $pdo;
 }
 
-/**
- * Sanitize input data
- * @param string $data
- * @return string
- */
-function sanitizeInput($data) {
-    return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
+function jsonResponse($data, $statusCode = 200) {
+    http_response_code($statusCode);
+    echo json_encode($data);
+    exit;
 }
 
-/**
- * Generate UUID
- * @return string
- */
 function generateUUID() {
-    return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+    return sprintf(
+        '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         mt_rand(0, 0xffff), mt_rand(0, 0xffff),
         mt_rand(0, 0xffff),
         mt_rand(0, 0x0fff) | 0x4000,
@@ -118,58 +86,175 @@ function generateUUID() {
     );
 }
 
-/**
- * Format image URL
- * @param string|null $imagePath
- * @return string|null
- */
-function formatImageURL($imagePath) {
-    if (empty($imagePath)) {
+function generateToken($userId, $role) {
+    $header  = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+    $payload = base64_encode(json_encode([
+        'user_id' => $userId,
+        'role'    => $role,
+        'exp'     => time() + JWT_EXPIRY,
+        'iat'     => time(),
+    ]));
+    $signature = base64_encode(hash_hmac('sha256', "$header.$payload", JWT_SECRET, true));
+    return "$header.$payload.$signature";
+}
+
+function verifyToken($token) {
+    $parts = explode('.', $token);
+    if (count($parts) !== 3) return null;
+
+    [$header, $payload, $signature] = $parts;
+    $expectedSignature = base64_encode(hash_hmac('sha256', "$header.$payload", JWT_SECRET, true));
+
+    if ($signature !== $expectedSignature) return null;
+
+    $data = json_decode(base64_decode($payload), true);
+    if (!$data || $data['exp'] < time()) return null;
+
+    return $data;
+}
+
+function getAuthUser() {
+    $headers    = getallheaders();
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+
+    if (empty($authHeader) || !preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
         return null;
     }
-    
-    if (strpos($imagePath, 'http') === 0) {
-        return $imagePath;
+
+    $tokenData = verifyToken($matches[1]);
+    if (!$tokenData) return null;
+
+    $pdo = getDBConnection();
+
+    if ($tokenData['role'] === 'vendor') {
+        // Vendor JWT encodes the vendors.id as 'user_id'
+        $stmt = $pdo->prepare("SELECT * FROM vendors WHERE id = ? AND deleted_at IS NULL");
+        $stmt->execute([$tokenData['user_id']]);
+    } else {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND deleted_at IS NULL");
+        $stmt->execute([$tokenData['user_id']]);
     }
-    
-    return UPLOAD_URL . ltrim($imagePath, '/');
+
+    $user = $stmt->fetch();
+    if (!$user) return null;
+
+    $user['role'] = $tokenData['role'];
+    return $user;
+}
+
+function requireAuth() {
+    $user = getAuthUser();
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'Unauthorized'], 401);
+    }
+    return $user;
+}
+
+function requireVendor() {
+    $user = requireAuth();
+    if ($user['role'] !== 'vendor') {
+        jsonResponse(['success' => false, 'message' => 'Vendor access required'], 403);
+    }
+    return $user;
+}
+
+function requireApprovedVendor() {
+    $vendor = requireVendor();
+    if ($vendor['status'] !== 'approved') {
+        jsonResponse([
+            'success' => false,
+            'message' => 'Your vendor account is pending approval. Please wait for admin verification.',
+            'status'  => $vendor['status'],
+        ], 403);
+    }
+    return $vendor;
+}
+
+function getInput() {
+    $input = json_decode(file_get_contents('php://input'), true);
+    return $input ?: $_POST;
+}
+
+function createSlug($text) {
+    $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $text)));
+    return $slug . '-' . substr(uniqid(), -6);
+}
+
+function uploadFile($file, $folder = '') {
+    $uploadDir = UPLOAD_DIR . $folder . '/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $ext      = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = uniqid() . '_' . time() . '.' . $ext;
+    $filepath = $uploadDir . $filename;
+
+    if (move_uploaded_file($file['tmp_name'], $filepath)) {
+        return UPLOAD_URL . $folder . '/' . $filename;
+    }
+
+    return null;
 }
 
 /**
- * Parse JSON images field
- * @param string|null $imagesJson
- * @return array
+ * Consistently format image paths into absolute URLs.
  */
-function parseImages($imagesJson) {
-    if (empty($imagesJson)) {
-        return [];
+function formatImageURL($path) {
+    if (empty($path)) return null;
+
+    // Handle JSON array string or already decoded array
+    if (is_string($path) && isset($path[0]) && $path[0] === '[' && substr($path, -1) === ']') {
+        $decoded = json_decode($path, true);
+        if (is_array($decoded)) {
+            $formattedArray = [];
+            foreach ($decoded as $item) {
+                $formattedArray[] = formatImageURL($item);
+            }
+            return $formattedArray;
+        }
     }
     
-    $images = json_decode($imagesJson, true);
-    if (!is_array($images)) {
-        return [];
+    if (is_array($path)) {
+        $formattedArray = [];
+        foreach ($path as $item) {
+            $formattedArray[] = formatImageURL($item);
+        }
+        return $formattedArray;
+    }
+
+    // Absolute URL check
+    if (filter_var($path, FILTER_VALIDATE_URL)) {
+        return $path;
+    }
+
+    // Clean up path
+    $cleanPath = ltrim($path, '/');
+    
+    // Handle root-relative paths like "app/askus/uploads/..."
+    if (strpos($cleanPath, 'app/askus/uploads/') === 0) {
+        return 'https://indiawebdesigns.in/' . $cleanPath;
     }
     
-    return array_map('formatImageURL', $images);
+    // Handle paths starting with "uploads/" (strip it to avoid duplication with UPLOAD_URL)
+    if (strpos($cleanPath, 'uploads/') === 0) {
+        return UPLOAD_URL . substr($cleanPath, 8);
+    }
+    
+    return UPLOAD_URL . $cleanPath;
 }
 
 /**
- * Log error with context
- * @param string $message
- * @param array $context
+ * Simple logger for error reporting
  */
 function logError($message, $context = []) {
-    $logMessage = $message;
+    $logMessage = "[" . date('Y-m-d H:i:s') . "] " . $message;
     if (!empty($context)) {
-        $logMessage .= " | Context: " . json_encode($context);
+        $logMessage .= " " . json_encode($context);
     }
     error_log($logMessage);
 }
 
-// Set default timezone
-date_default_timezone_set('UTC');
-
-// Initialize
-setCORSHeaders();
-handlePreflight();
-?>
+function sanitizeInput($data) {
+    return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
+}

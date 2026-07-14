@@ -65,18 +65,20 @@ class Product {
 
     // Handle price - try multiple field names
     double priceValue = 0;
-    if (json['price'] != null) {
-      priceValue = double.tryParse(json['price']?.toString() ?? '0') ?? 0;
-    } else if (json['selling_price'] != null) {
-      priceValue = double.tryParse(json['selling_price']?.toString() ?? '0') ?? 0;
+    if (json['price'] != null && json['price'].toString().isNotEmpty) {
+      priceValue = double.tryParse(json['price'].toString()) ?? 0;
+    } else if (json['selling_price'] != null && json['selling_price'].toString().isNotEmpty) {
+      priceValue = double.tryParse(json['selling_price'].toString()) ?? 0;
+    } else if (json['min_price'] != null && json['min_price'].toString().isNotEmpty) {
+      priceValue = double.tryParse(json['min_price'].toString()) ?? 0;
     }
 
     // Handle compare price - try multiple field names
     double? comparePriceValue;
-    if (json['compare_price'] != null) {
-      comparePriceValue = double.tryParse(json['compare_price']?.toString() ?? '');
-    } else if (json['mrp'] != null) {
-      comparePriceValue = double.tryParse(json['mrp']?.toString() ?? '');
+    if (json['compare_price'] != null && json['compare_price'].toString().isNotEmpty) {
+      comparePriceValue = double.tryParse(json['compare_price'].toString());
+    } else if (json['mrp'] != null && json['mrp'].toString().isNotEmpty) {
+      comparePriceValue = double.tryParse(json['mrp'].toString());
     }
 
     int stockValue = 0;

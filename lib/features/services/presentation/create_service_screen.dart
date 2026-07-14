@@ -20,10 +20,11 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   final _durationController = TextEditingController();
-  
+
   int? _selectedCategoryId;
   final List<File> _images = [];
   bool _isLoading = false;
+  bool _acceptOwnership = false;
 
   @override
   void initState() {
@@ -43,7 +44,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final images = await picker.pickMultiImage();
-    
+
     if (images.isNotEmpty) {
       setState(() {
         _images.addAll(images.map((xFile) => File(xFile.path)));
@@ -53,9 +54,21 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_acceptOwnership) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('You must confirm ownership of the service'),
+            backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
     if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category'), backgroundColor: AppColors.error),
+        const SnackBar(
+            content: Text('Please select a category'),
+            backgroundColor: AppColors.error),
       );
       return;
     }
@@ -68,7 +81,8 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       description: _descriptionController.text.trim(),
       categoryId: _selectedCategoryId!,
       price: double.parse(_priceController.text),
-      duration: _durationController.text.isNotEmpty ? _durationController.text : null,
+      duration:
+          _durationController.text.isNotEmpty ? _durationController.text : null,
       images: _images.isNotEmpty ? _images : null,
     );
 
@@ -78,12 +92,16 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Service created successfully'), backgroundColor: AppColors.success),
+        const SnackBar(
+            content: Text('Service created successfully'),
+            backgroundColor: AppColors.success),
       );
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(provider.error ?? 'Failed to create service'), backgroundColor: AppColors.error),
+        SnackBar(
+            content: Text(provider.error ?? 'Failed to create service'),
+            backgroundColor: AppColors.error),
       );
     }
   }
@@ -99,7 +117,8 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Service Images', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('Service Images',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               SizedBox(
                 height: 100,
@@ -107,28 +126,33 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     ..._images.map((file) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(file, width: 100, height: 100, fit: BoxFit.cover),
-                          ),
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: InkWell(
-                              onTap: () => setState(() => _images.remove(file)),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                child: const Icon(Icons.close, size: 16, color: Colors.white),
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(file,
+                                    width: 100, height: 100, fit: BoxFit.cover),
                               ),
-                            ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: InkWell(
+                                  onTap: () =>
+                                      setState(() => _images.remove(file)),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle),
+                                    child: const Icon(Icons.close,
+                                        size: 16, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    )),
+                        )),
                     InkWell(
                       onTap: _pickImages,
                       child: Container(
@@ -141,9 +165,13 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                         child: const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_a_photo, color: AppColors.textSecondary),
+                            Icon(Icons.add_a_photo,
+                                color: AppColors.textSecondary),
                             SizedBox(height: 4),
-                            Text('Add', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            Text('Add',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary)),
                           ],
                         ),
                       ),
@@ -164,9 +192,11 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                     value: _selectedCategoryId,
                     decoration: const InputDecoration(labelText: 'Category'),
                     items: categoryProvider.categories.map((cat) {
-                      return DropdownMenuItem(value: cat.id, child: Text(cat.name));
+                      return DropdownMenuItem(
+                          value: cat.id, child: Text(cat.name));
                     }).toList(),
-                    onChanged: (value) => setState(() => _selectedCategoryId = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedCategoryId = value),
                     validator: (v) => v == null ? 'Required' : null,
                   );
                 },
@@ -197,6 +227,32 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                ),
+                child: CheckboxListTile(
+                  value: _acceptOwnership,
+                  onChanged: (value) =>
+                      setState(() => _acceptOwnership = value ?? false),
+                  title: const Text(
+                    'I confirm this service is owned by me. Adding other people\'s equipment/services is NOT allowed.',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  activeColor: AppColors.primary,
+                  isThreeLine: true,
+                  subtitle: const Text(
+                    'Violation may result in account termination.',
+                    style: TextStyle(fontSize: 12, color: AppColors.error),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(

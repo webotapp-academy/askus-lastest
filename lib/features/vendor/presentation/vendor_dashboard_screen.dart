@@ -8,6 +8,7 @@ import '../../enquiries/data/enquiry_provider.dart';
 import '../../notifications/presentation/notification_screen.dart';
 import '../../products/presentation/create_product_screen.dart';
 import '../../services/presentation/create_service_screen.dart';
+import '../../subscriptions/presentation/subscription_plans_screen.dart';
 import 'kyc_upload_screen.dart';
 
 class VendorDashboardScreen extends StatefulWidget {
@@ -160,6 +161,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           await Future.wait([
+            auth.checkAuthStatus(),
             products.fetchVendorProducts(),
             services.fetchVendorServices(),
             enquiries.fetchEnquiries(),
@@ -177,6 +179,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   children: [
                     _buildStatusCard(vendorProfile),
                     const SizedBox(height: 16),
+                    // ✅ Show subscription card if vendor has a plan (current_plan_id is set)
+                    if (vendorProfile?.currentPlanId != null) ...[
+                      _buildSubscriptionCard(
+                          vendorProfile,
+                          products.vendorProducts.length +
+                              services.vendorServices.length),
+                      const SizedBox(height: 16),
+                    ],
                     _buildStatsGrid(
                       products.vendorProducts.length,
                       services.vendorServices.length,
@@ -378,6 +388,125 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
+  Widget _buildSubscriptionCard(dynamic vendorProfile, int totalListings) {
+    if (vendorProfile == null) return const SizedBox.shrink();
+
+    final hasPlan = vendorProfile.currentPlanId != null;
+    final maxListings = vendorProfile.maxListings;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withAlpha(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withAlpha(50)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Subscription & Limits',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              if (hasPlan)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('Active',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                )
+              else
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('No Plan',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Listings: $totalListings / ${hasPlan ? maxListings : 0}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              if (hasPlan && maxListings > 0 && totalListings >= maxListings)
+                const Text(
+                  'LIMIT REACHED',
+                  style: TextStyle(
+                      color: AppColors.error,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: hasPlan && maxListings > 0 ? totalListings / maxListings : 0,
+              backgroundColor: AppColors.primary.withAlpha(30),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                hasPlan && maxListings > 0 && totalListings >= maxListings
+                    ? AppColors.error
+                    : AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Featured Days left: ${vendorProfile.availableFeaturedDays}',
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          Text(
+            'Boost Days left: ${vendorProfile.availableBoostDays}',
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const SubscriptionPlansScreen()));
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Upgrade Plan / Buy Add-ons',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatsGrid(
       int products, int services, int pendingEnquiries, double rating) {
     return GridView.count(
@@ -417,8 +546,67 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 
   Widget _buildQuickActions() {
-    final user = context.read<AuthProvider>().user;
-    final isApproved = user?.vendorProfile?.status == 'approved';
+    final auth = context.read<AuthProvider>();
+    final products = context.read<ProductProvider>();
+    final services = context.read<ServiceProvider>();
+
+    final user = auth.user;
+    final vendorProfile = user?.vendorProfile;
+    final isApproved = vendorProfile?.status == 'approved';
+    final vendorType = vendorProfile?.vendorType ?? 'vendor';
+    final hasPlan = vendorProfile?.currentPlanId != null;
+    final maxListings = vendorProfile?.maxListings ?? 0;
+    final currentListings =
+        products.vendorProducts.length + services.vendorServices.length;
+
+    void checkLimitAndNavigate(Widget screen) {
+      if (!isApproved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Your vendor account is pending approval. Please wait for admin verification.'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+        return;
+      }
+
+      if (!hasPlan) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'No active subscription plan found. Please subscribe to list items.'),
+            backgroundColor: AppColors.error,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+        );
+        return;
+      }
+
+      if (currentListings >= maxListings) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Listing limit reached for your current plan. Please upgrade to add more.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+        );
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => screen),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,55 +618,28 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(
-              child: _QuickActionButton(
-                icon: Icons.add_box_rounded,
-                label: 'Add Product',
-                color: AppColors.primary,
-                onTap: () {
-                  if (!isApproved) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Your vendor account is pending approval. Please wait for admin verification.'),
-                        backgroundColor: AppColors.warning,
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const CreateProductScreen()),
-                  );
-                },
+            if (vendorType == 'vendor' || vendorType == 'both')
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.add_box_rounded,
+                  label: 'Add Product',
+                  color: AppColors.primary,
+                  onTap: () =>
+                      checkLimitAndNavigate(const CreateProductScreen()),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickActionButton(
-                icon: Icons.add_circle_rounded,
-                label: 'Add Service',
-                color: AppColors.secondary,
-                onTap: () {
-                  if (!isApproved) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Your vendor account is pending approval. Please wait for admin verification.'),
-                        backgroundColor: AppColors.warning,
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const CreateServiceScreen()),
-                  );
-                },
+            if (vendorType == 'worker' || vendorType == 'both') ...[
+              if (vendorType == 'both') const SizedBox(width: 12),
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.add_circle_rounded,
+                  label: 'Add Service',
+                  color: AppColors.secondary,
+                  onTap: () =>
+                      checkLimitAndNavigate(const CreateServiceScreen()),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ],

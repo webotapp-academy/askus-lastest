@@ -73,41 +73,91 @@ class _HomeScreenState extends State<HomeScreen> {
         ? [
             const VendorDashboardScreen(),
             const VendorProductsScreen(),
-            const VendorServicesScreen(),
+            const VendorDashboardScreen(), // Replaced services screen
             const EnquiryListScreen(),
             const VendorProfileScreen(),
           ]
         : [
             const _UserHomeTab(),
             const ProductListScreen(),
-            const ServiceListScreen(),
+            const _UserHomeTab(), // Replaced services screen
             const EnquiryListScreen(),
             const ProfileScreen(),
           ];
 
     final bottomNavItems = isVendor
-        ? const [
-            BottomNavigationBarItem(
+        ? [
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.inventory_2_rounded), label: 'Products'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.build_circle_rounded), label: 'Services'),
-            BottomNavigationBarItem(
+              icon: Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Image.asset(
+                    'assets/images/bot_icon.png',
+                    height: 28,
+                    width: 28,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              activeIcon: Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Image.asset(
+                    'assets/images/bot_icon.png',
+                    height: 28,
+                    width: 28,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              label: ' ',
+            ),
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.mail_rounded), label: 'Enquiries'),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.person_rounded), label: 'Profile'),
           ]
-        : const [
-            BottomNavigationBarItem(
+        : [
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.home_rounded), label: 'Home'),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.shopping_bag_rounded), label: 'Products'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.handyman_rounded), label: 'Services'),
-            BottomNavigationBarItem(
+              icon: Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Image.asset(
+                    'assets/images/bot_icon.png',
+                    height: 28,
+                    width: 28,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              activeIcon: Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Image.asset(
+                    'assets/images/bot_icon.png',
+                    height: 28,
+                    width: 28,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              label: ' ',
+            ),
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.mail_rounded), label: 'Enquiries'),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.person_rounded), label: 'Profile'),
           ];
 
@@ -151,6 +201,7 @@ class _UserHomeTab extends StatefulWidget {
 class _UserHomeTabState extends State<_UserHomeTab> {
   final PageController _bannerController = PageController();
   int _currentBannerIndex = 0;
+  Timer? _bannerTimer;
 
   // Voice search variables
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -163,16 +214,40 @@ class _UserHomeTabState extends State<_UserHomeTab> {
   void initState() {
     super.initState();
     _initSpeech();
+    _startBannerTimer();
   }
 
   @override
   void dispose() {
+    _bannerTimer?.cancel();
     _bannerController.dispose();
     _silenceTimer?.cancel();
     if (_isListening) {
       _speech.stop();
     }
     super.dispose();
+  }
+
+  void _startBannerTimer() {
+    _bannerTimer?.cancel();
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      final banners = context.read<BannerProvider>().homeTopBanners;
+      if (banners.isNotEmpty) {
+        if (_currentBannerIndex < banners.length - 1) {
+          _currentBannerIndex++;
+        } else {
+          _currentBannerIndex = 0;
+        }
+
+        if (_bannerController.hasClients) {
+          _bannerController.animateToPage(
+            _currentBannerIndex,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    });
   }
 
   Future<void> _initSpeech() async {
@@ -397,15 +472,11 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 ),
               ),
             _buildSearchBar(),
-            if (banners.homeTopBanners.isNotEmpty)
-              _buildBannerCarousel(banners),
+            _buildHeroSection(banners),
             _buildCategoriesSection(categories),
             _buildFullWidthCategoriesSection(categories),
             _buildAllProductsSection(products),
             _buildFeaturedProductsSection(products),
-            _buildFeaturedServicesSection(context),
-            if (banners.homeMiddleBanners.isNotEmpty)
-              _buildPromoBanner(banners),
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
         ),
@@ -531,7 +602,13 @@ class _UserHomeTabState extends State<_UserHomeTab> {
   Widget _buildSearchBar() {
     return SliverToBoxAdapter(
       child: Container(
-        color: AppColors.primary,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.primary, AppColors.secondary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           decoration: BoxDecoration(
@@ -574,12 +651,27 @@ class _UserHomeTabState extends State<_UserHomeTab> {
     );
   }
 
-  Widget _buildBannerCarousel(BannerProvider banners) {
+  Widget _buildHeroSection(BannerProvider banners) {
+    if (banners.isLoading) {
+      return const SliverToBoxAdapter(
+        child: SizedBox(
+          height: 180,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (banners.homeTopBanners.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    final displayItems = banners.homeTopBanners;
     final isTablet = MediaQuery.of(context).size.width > 600;
+
     return SliverToBoxAdapter(
       child: Container(
-        margin: const EdgeInsets.only(top: 8),
-        height: isTablet ? 250 : 150,
+        margin: const EdgeInsets.only(top: 12),
+        height: isTablet ? 280 : 180,
         child: Column(
           children: [
             Expanded(
@@ -587,63 +679,127 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 controller: _bannerController,
                 onPageChanged: (index) =>
                     setState(() => _currentBannerIndex = index),
-                itemCount: banners.homeTopBanners.length,
+                itemCount: displayItems.length,
                 itemBuilder: (context, index) {
-                  final banner = banners.homeTopBanners[index];
+                  final item = displayItems[index];
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        banner.image,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [AppColors.primary, AppColors.secondary],
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              banner.title ?? 'Special Offer',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          Image.network(
+                            item.image,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, __, ___) => Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [AppColors.primary, AppColors.secondary],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.image_outlined, color: Colors.white, size: 40),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      item.title ?? 'Banner',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                          // Gradient Overlay
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.6),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Content
+                          if (item.title != null)
+                            Positioned(
+                              bottom: 20,
+                              left: 20,
+                              right: 20,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.title!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black45,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
-                banners.homeTopBanners.length,
+                displayItems.length,
                 (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  width: index == _currentBannerIndex ? 16 : 6,
-                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: index == _currentBannerIndex ? 20 : 8,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: index == _currentBannerIndex
                         ? AppColors.primary
                         : AppColors.border,
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
@@ -765,7 +921,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
               children: [
                 Icon(Icons.star_rounded, color: AppColors.warning, size: 18),
                 const SizedBox(width: 6),
-                const Text('Featured Products', style: _sectionTitleStyle),
+                const Text('Featured', style: _sectionTitleStyle),
                 const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.push(
@@ -876,47 +1032,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
     );
   }
 
-  Widget _buildPromoBanner(BannerProvider banners) {
-    if (banners.homeMiddleBanners.isEmpty)
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
-    final banner = banners.homeMiddleBanners.first;
-
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        height: 90,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            banner.image,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            errorBuilder: (_, __, ___) => Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.success, AppColors.primary],
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  banner.title ?? 'Special Promotion',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildAllProductsSection(ProductProvider products) {
     return SliverToBoxAdapter(
@@ -932,7 +1048,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                 Icon(Icons.local_fire_department_rounded,
                     color: AppColors.error, size: 18),
                 const SizedBox(width: 6),
-                const Text('Most Searched Products', style: _sectionTitleStyle),
+                const Text('Most Searched', style: _sectionTitleStyle),
               ],
             ),
             const SizedBox(height: 10),

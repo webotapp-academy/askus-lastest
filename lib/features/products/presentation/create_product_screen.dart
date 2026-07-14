@@ -26,6 +26,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   int? _selectedCategoryId;
   final List<File> _images = [];
   bool _isLoading = false;
+  bool _acceptOwnership = false;
 
   @override
   void initState() {
@@ -57,6 +58,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_acceptOwnership) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('You must confirm ownership of the product'),
+            backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
     if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -244,6 +255,32 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                ),
+                child: CheckboxListTile(
+                  value: _acceptOwnership,
+                  onChanged: (value) =>
+                      setState(() => _acceptOwnership = value ?? false),
+                  title: const Text(
+                    'I confirm this product is owned by me. Adding other people\'s equipment/products is NOT allowed.',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  activeColor: AppColors.primary,
+                  isThreeLine: true,
+                  subtitle: const Text(
+                    'Violation may result in account termination.',
+                    style: TextStyle(fontSize: 12, color: AppColors.error),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(
