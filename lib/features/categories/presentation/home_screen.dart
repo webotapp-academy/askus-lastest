@@ -423,7 +423,6 @@ class _UserHomeTabState extends State<_UserHomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    final location = context.watch<LocationProvider>();
     final categories = context.watch<CategoryProvider>();
     final products = context.watch<ProductProvider>();
     final banners = context.watch<BannerProvider>();
@@ -440,7 +439,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
         },
         child: CustomScrollView(
           slivers: [
-            _buildAppBar(location),
+            _buildAppBar(),
             if (_isListening)
               SliverToBoxAdapter(
                 child: Container(
@@ -493,9 +492,9 @@ class _UserHomeTabState extends State<_UserHomeTab> {
     );
   }
 
-  Widget _buildAppBar(LocationProvider location) {
+  Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 80,
       floating: false,
       pinned: true,
       backgroundColor: AppColors.primary,
@@ -510,96 +509,57 @@ class _UserHomeTabState extends State<_UserHomeTab> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Image.asset(
+                  'assets/images/askus_logo.png',
+                  height: 48,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback to text if image not found
+                    return Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.question_answer_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Logo Image
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Image.asset(
-                                'assets/images/askus_logo.png',
-                                height: 50,
-                                fit: BoxFit.contain,
-                                alignment: Alignment.centerLeft,
-                                errorBuilder: (context, error, stackTrace) {
-                                  // Fallback to text if image not found
-                                  return Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(
-                                          Icons.question_answer_rounded,
-                                          color: Colors.white,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Ask Us',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 28,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Your Marketplace',
-                                            style: TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
-                                },
+                            const Text(
+                              'Ask Us',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              'Your Marketplace',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on,
-                            color: Colors.white70, size: 16),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            location.currentAddress ?? 'Set your location',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
                       ],
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
