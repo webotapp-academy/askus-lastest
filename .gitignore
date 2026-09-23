@@ -11,7 +11,10 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.agents
+.hermes
 
+skills-lock.json
 # IntelliJ related
 *.iml
 *.ipr
