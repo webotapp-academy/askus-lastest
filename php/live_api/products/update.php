@@ -43,6 +43,7 @@ try {
         'description' => 'description',
         'short_description' => 'short_description',
         'category_id' => 'category_id',
+        'subcategory_id' => 'subcategory_id',
         // mrp handled above
         'compare_price' => 'selling_price',
         'selling_price' => 'selling_price',
@@ -67,8 +68,17 @@ try {
     
     foreach ($fieldMapping as $inputField => $dbColumn) {
         if (isset($input[$inputField])) {
+            $val = $input[$inputField];
+            if ($inputField === 'subcategory_id' && !empty($val)) {
+                $targetCat = intval($input['category_id'] ?? $product['category_id']);
+                $checkSub = $pdo->prepare("SELECT id FROM subcategories WHERE id = ? AND category_id = ? AND status = 'active'");
+                $checkSub->execute([$val, $targetCat]);
+                if (!$checkSub->fetch()) {
+                    $val = null;
+                }
+            }
             $updates[] = "$dbColumn = ?";
-            $params[] = $input[$inputField];
+            $params[] = $val;
         }
     }
     

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/api/api_client.dart';
 import '../../auth/data/auth_provider.dart';
 import '../../auth/presentation/login_screen.dart';
 import 'kyc_upload_screen.dart';
@@ -36,7 +37,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                   const SizedBox(height: 16),
                   _buildMenuSection(),
                   const SizedBox(height: 16),
-                  _buildSettingsSection(),
+                  _buildSettingsSection(auth),
                   const SizedBox(height: 16),
                   _buildLogoutButton(auth),
                   const SizedBox(height: 32),
@@ -300,7 +301,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildSettingsSection(AuthProvider auth) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -314,6 +315,20 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
               MaterialPageRoute(builder: (_) => const KycUploadScreen()),
             );
           }),
+          const Divider(height: 1),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_forever_outlined, color: Colors.red, size: 20),
+            ),
+            title: const Text('Remove / Deactivate Store', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.chevron_right, color: Colors.red),
+            onTap: () => _showDeactivateDialog(auth),
+          ),
         ],
       ),
     );
@@ -365,6 +380,56 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
+      ),
+    );
+  }
+
+  void _showDeactivateDialog(AuthProvider auth) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove / Deactivate Store'),
+        content: const Text(
+          'Are you sure you want to deactivate and remove your store profile? '
+          'Your store and listings will no longer appear in search results or category listings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final api = ApiClient();
+              final res = await api.post('/vendor/delete.php', {});
+              if (!mounted) return;
+              if (res.success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vendor profile deactivated successfully'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                await auth.logout();
+                if (!mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(res.message ?? 'Failed to deactivate vendor account'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Deactivate & Remove', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

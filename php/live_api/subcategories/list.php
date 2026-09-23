@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Adjust path using __DIR__ for reliability
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../config.php';
 
 // Your domain base URL
 define('BASE_URL', 'https://indiawebdesigns.in');

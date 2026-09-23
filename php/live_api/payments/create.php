@@ -58,18 +58,13 @@ if (!$isVendorRegistration) {
     }
     error_log("✅ Vendor exists in database");
     
-    // Check for duplicate payments for regular vendors
-    $stmt = $pdo->prepare("SELECT * FROM payments WHERE user_id = ? AND status IN ('pending', 'success') AND amount = ?");
+    // Check for existing pending payments for regular vendors
+    $stmt = $pdo->prepare("SELECT * FROM payments WHERE user_id = ? AND status = 'pending' AND amount = ? ORDER BY id DESC LIMIT 1");
     $stmt->execute([$vendorId, $amount]);
     $existingPayment = $stmt->fetch();
 
     if ($existingPayment) {
-        error_log("📋 Existing payment found: ID=" . $existingPayment['id'] . ", Status=" . $existingPayment['status']);
-        
-        if ($existingPayment['status'] === 'success') {
-            error_log("❌ Payment already completed");
-            jsonResponse(['success' => false, 'message' => 'Payment already completed'], 400);
-        }
+        error_log("📋 Existing pending payment found: ID=" . $existingPayment['id']);
     }
 } else {
     error_log("✅ Vendor registration - skipping vendor verification");

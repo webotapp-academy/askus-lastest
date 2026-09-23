@@ -47,9 +47,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> login(String identifier, String password) async {
+  Future<bool> login(String identifier, String password, {String? role}) async {
     debugPrint('🔐 Starting login process...');
-    debugPrint('🆔 Identifier: $identifier');
+    debugPrint('🆔 Identifier: $identifier, Role: $role');
 
     _status = AuthStatus.loading;
     _error = null;
@@ -61,6 +61,7 @@ class AuthProvider extends ChangeNotifier {
     final response = await _api.post(ApiConstants.login, {
       if (isEmail) 'email': identifier else 'phone': identifier,
       'password': password,
+      if (role != null) 'role': role,
     });
 
     debugPrint('📨 Login API Response received');
@@ -256,6 +257,7 @@ class AuthProvider extends ChangeNotifier {
     required String pincode,
     required String paymentId,
     required String vendorType,
+    int? categoryId,
     String? planId,
     String? gstNumber,
     String? panNumber,
@@ -266,7 +268,7 @@ class AuthProvider extends ChangeNotifier {
 
     debugPrint('🏪 Creating vendor in database after payment verification...');
     debugPrint('💳 Payment ID: $paymentId');
-    debugPrint('👤 Owner: $name, Store: $storeName, Type: $vendorType, Plan: $planId');
+    debugPrint('👤 Owner: $name, Store: $storeName, Category: $categoryId, Type: $vendorType, Plan: $planId');
 
     final response = await _api.post('/auth/create-vendor-after-payment.php', {
       'owner_name': name,
@@ -281,6 +283,7 @@ class AuthProvider extends ChangeNotifier {
       'payment_id': paymentId,
       'vendor_type': vendorType,
       'plan_id': planId,
+      if (categoryId != null) 'category_id': categoryId,
       if (gstNumber != null && gstNumber.isNotEmpty) 'gst_number': gstNumber,
       if (panNumber != null && panNumber.isNotEmpty) 'pan_number': panNumber,
     });

@@ -204,7 +204,12 @@ class _VendorPaymentScreenState extends State<VendorPaymentScreen>
         pincode: widget.vendorData['pincode'],
         paymentId: paymentId,
         vendorType: widget.vendorData['vendor_type'] ?? 'vendor',
-        planId: widget.vendorData['plan_id']?.toString(), // Added planId
+        categoryId: widget.vendorData['category_id'] is int 
+            ? widget.vendorData['category_id'] as int 
+            : (widget.vendorData['category_id'] != null 
+                ? int.tryParse(widget.vendorData['category_id'].toString()) 
+                : null),
+        planId: widget.vendorData['plan_id']?.toString(),
         gstNumber: widget.vendorData['gst_number']?.isNotEmpty == true 
             ? widget.vendorData['gst_number'] 
             : null,

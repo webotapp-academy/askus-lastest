@@ -22,6 +22,7 @@ $address = trim($input['address'] ?? '');
 $city = trim($input['city'] ?? '');
 $state = trim($input['state'] ?? '');
 $pincode = trim($input['pincode'] ?? '');
+$category_id = !empty($input['category_id']) ? intval($input['category_id']) : null;
 $gst_number = trim($input['gst_number'] ?? '');
 $pan_number = trim($input['pan_number'] ?? '');
 
@@ -45,7 +46,7 @@ if (strlen($password) < 6) {
 
 $pdo = getDBConnection();
 
-// ⚠️ IMPORTANT: Check in BOTH users and vendors tables
+// Check in BOTH users and vendors tables
 $stmt = $pdo->prepare("SELECT email FROM users WHERE email = ? AND deleted_at IS NULL");
 $stmt->execute([$email]);
 if ($stmt->fetch()) {
@@ -57,10 +58,6 @@ $stmt->execute([$email]);
 if ($stmt->fetch()) {
     jsonResponse(['success' => false, 'message' => 'Email already registered as vendor'], 400);
 }
-
-// ✅ CHANGED: Don't create vendor here anymore
-// Instead, just return success with temporary registration data
-// The vendor will be created after payment verification
 
 jsonResponse([
     'success' => true,
@@ -74,8 +71,8 @@ jsonResponse([
         'city' => $city,
         'state' => $state,
         'pincode' => $pincode,
+        'category_id' => $category_id,
         'gst_number' => $gst_number ?: null,
         'pan_number' => $pan_number ?: null,
     ]
 ]);
-?>

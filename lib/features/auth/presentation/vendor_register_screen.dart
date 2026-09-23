@@ -6,6 +6,8 @@ import '../data/auth_provider.dart';
 import '../../payment/presentation/vendor_payment_screen.dart';
 import '../../subscriptions/data/subscription_provider.dart';
 import '../../subscriptions/data/subscription_plan_model.dart';
+import '../../categories/data/category_provider.dart';
+import '../../categories/data/category_model.dart';
 
 class VendorRegisterScreen extends StatefulWidget {
   const VendorRegisterScreen({super.key});
@@ -23,6 +25,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   bool _acceptTerms = false;
   String _vendorType = 'vendor'; // Default to vendor
   SubscriptionPlan? _selectedPlan;
+  int? _selectedCategoryId;
 
   // Dynamic registration fee configuration
   double get baseFee => _selectedPlan?.price ?? 1.0;
@@ -56,9 +59,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch plans on init
+    // Fetch plans & categories on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SubscriptionProvider>().fetchPlans(targetGroup: _vendorType);
+      context.read<CategoryProvider>().fetchCategories();
     });
   }
 
@@ -551,6 +555,53 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               controller: _storeNameController,
               label: 'Store Name',
               icon: Icons.store_outlined),
+          const SizedBox(height: 16),
+          // Category Selection Dropdown
+          Consumer<CategoryProvider>(
+            builder: (context, categoryProvider, _) {
+              final categories = categoryProvider.parentCategories;
+              return DropdownButtonFormField<int>(
+                value: _selectedCategoryId,
+                decoration: InputDecoration(
+                  labelText: 'Business Category',
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  prefixIcon: const Icon(Icons.category_outlined, color: AppColors.primary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.background.withOpacity(0.3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                ),
+                items: categories.map((cat) {
+                  return DropdownMenuItem<int>(
+                    value: cat.id,
+                    child: Text(cat.name, style: const TextStyle(fontSize: 15)),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategoryId = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null) {
+                    return 'Please select a business category';
+                  }
+                  return null;
+                },
+              );
+            },
+          ),
           const SizedBox(height: 16),
           _buildTextField(
               controller: _storeDescriptionController,

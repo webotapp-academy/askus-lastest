@@ -27,6 +27,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   List<Product> _products = [];
   List<Service> _services = [];
+  List<Map<String, dynamic>> _vendors = [];
   bool _isLoading = false;
   bool _hasSearched = false;
   String _searchType = 'all';
@@ -148,24 +149,15 @@ class _SearchScreenState extends State<SearchScreen> {
 
           if (result.finalResult) {
             _stopListening();
-            _search(_searchController.text);
           }
         },
         localeId: _currentLocaleId,
         partialResults: true,
         cancelOnError: true,
-        listenMode: stt.ListenMode.confirmation,
       );
     } catch (e) {
-      debugPrint('Error starting speech recognition: $e');
-      if (!mounted) return;
+      debugPrint('Error starting speech listening: $e');
       setState(() => _isListening = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to start voice recognition: ${e.toString()}'),
-          backgroundColor: AppColors.error,
-        ),
-      );
     }
   }
 
@@ -173,10 +165,9 @@ class _SearchScreenState extends State<SearchScreen> {
     _silenceTimer?.cancel();
     try {
       await _speech.stop();
-      if (!mounted) return;
-      setState(() => _isListening = false);
     } catch (e) {
-      debugPrint('Error stopping speech recognition: $e');
+      debugPrint('Error stopping speech: $e');
+    } finally {
       if (!mounted) return;
       setState(() => _isListening = false);
     }
@@ -243,6 +234,7 @@ class _SearchScreenState extends State<SearchScreen> {
         _hasSearched = false;
         _products = [];
         _services = [];
+        _vendors = [];
         _errorMessage = null;
       });
       return;
@@ -266,21 +258,14 @@ class _SearchScreenState extends State<SearchScreen> {
       if (response.success && response.data != null) {
         final productsData = response.data!['products'] as List? ?? [];
         final servicesData = response.data!['services'] as List? ?? [];
+        final vendorsData = response.data!['vendors'] as List? ?? [];
 
         debugPrint(
             '🔍 Search Response - Products count: ${productsData.length}');
         debugPrint(
             '🔍 Search Response - Services count: ${servicesData.length}');
-
-        // Debug first product if available
-        if (productsData.isNotEmpty) {
-          debugPrint('🔍 First product data: ${productsData.first}');
-        }
-
-        // Debug first service if available
-        if (servicesData.isNotEmpty) {
-          debugPrint('🔍 First service data: ${servicesData.first}');
-        }
+        debugPrint(
+            '🔍 Search Response - Vendors count: ${vendorsData.length}');
 
         setState(() {
           _products = productsData.map((json) {
@@ -288,7 +273,6 @@ class _SearchScreenState extends State<SearchScreen> {
               return Product.fromJson(json);
             } catch (e) {
               debugPrint('❌ Error parsing product: $e');
-              debugPrint('❌ Product JSON: $json');
               rethrow;
             }
           }).toList();
@@ -297,10 +281,10 @@ class _SearchScreenState extends State<SearchScreen> {
               return Service.fromJson(json);
             } catch (e) {
               debugPrint('❌ Error parsing service: $e');
-              debugPrint('❌ Service JSON: $json');
               rethrow;
             }
           }).toList();
+          _vendors = List<Map<String, dynamic>>.from(vendorsData);
           _hasSearched = true;
           _isLoading = false;
         });
@@ -454,26 +438,35 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: 'All',
-                  isSelected: _searchType == 'all',
-                  onTap: () => _onFilterChanged('all'),
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: 'Products',
-                  isSelected: _searchType == 'products',
-                  onTap: () => _onFilterChanged('products'),
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: 'Services',
-                  isSelected: _searchType == 'services',
-                  onTap: () => _onFilterChanged('services'),
-                ),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _FilterChip(
+                    label: 'All',
+                    isSelected: _searchType == 'all',
+                    onTap: () => _onFilterChanged('all'),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Products',
+                    isSelected: _searchType == 'products',
+                    onTap: () => _onFilterChanged('products'),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Services',
+                    isSelected: _searchType == 'services',
+                    onTap: () => _onFilterChanged('services'),
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Stores',
+                    isSelected: _searchType == 'vendors',
+                    onTap: () => _onFilterChanged('vendors'),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -509,7 +502,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                     size: 64, color: AppColors.textSecondary),
                                 SizedBox(height: 16),
                                 Text(
-                                  'Search for products and services',
+                                  'Search products, services, and stores',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 16,
@@ -518,7 +511,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               ],
                             ),
                           )
-                        : _products.isEmpty && _services.isEmpty
+                        : _products.isEmpty && _services.isEmpty && _vendors.isEmpty
                             ? const Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -547,6 +540,23 @@ class _SearchScreenState extends State<SearchScreen> {
                             : ListView(
                                 padding: const EdgeInsets.all(16),
                                 children: [
+                                  if (_vendors.isNotEmpty) ...[
+                                    const Text(
+                                      'Stores & Vendors',
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ...(_vendors.map((v) => _SearchResultCard(
+                                          title: v['store_name']?.toString() ?? 'Store',
+                                          subtitle: '${v['city'] ?? ''} ${v['owner_name'] != null ? "• " + v['owner_name'].toString() : ""}',
+                                          price: null,
+                                          image: v['logo']?.toString() ?? v['banner']?.toString(),
+                                          onTap: () => _showVendorDetails(v),
+                                        ))),
+                                    const SizedBox(height: 24),
+                                  ],
                                   if (_products.isNotEmpty) ...[
                                     const Text(
                                       'Products',
@@ -607,6 +617,96 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
+
+  void _showVendorDetails(Map<String, dynamic> vendor) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: vendor['logo'] != null && vendor['logo'].toString().isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.network(vendor['logo'].toString(), fit: BoxFit.cover),
+                        )
+                      : const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 32),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vendor['store_name']?.toString() ?? 'Store',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Owner: ${vendor['owner_name'] ?? 'N/A'}',
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (vendor['address'] != null || vendor['city'] != null) ...[
+              Row(
+                children: [
+                  const Icon(Icons.location_on_outlined, size: 20, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${vendor['address'] ?? ''} ${vendor['city'] ?? ''} ${vendor['pincode'] ?? ''}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (vendor['store_description'] != null) ...[
+              Text(
+                vendor['store_description'].toString(),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 20),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.check),
+                label: const Text('Close'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _FilterChip extends StatelessWidget {
@@ -622,19 +722,23 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.grey[200],
+          color: isSelected ? AppColors.primary : AppColors.background,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             color: isSelected ? Colors.white : AppColors.textPrimary,
-            fontWeight: FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 13,
           ),
         ),
       ),
@@ -645,14 +749,14 @@ class _FilterChip extends StatelessWidget {
 class _SearchResultCard extends StatelessWidget {
   final String title;
   final String subtitle;
-  final double price;
+  final double? price;
   final String? image;
   final VoidCallback onTap;
 
   const _SearchResultCard({
     required this.title,
     required this.subtitle,
-    required this.price,
+    this.price,
     this.image,
     required this.onTap,
   });
@@ -700,20 +804,22 @@ class _SearchResultCard extends StatelessWidget {
                   ),
                 )
               : const Icon(
-                  Icons.image_outlined,
-                  color: AppColors.textSecondary,
-                  size: 24,
+                  Icons.storefront_rounded,
+                  color: AppColors.primary,
+                  size: 28,
                 ),
         ),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: Text(
-          '₹${price.toStringAsFixed(0)}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
+        trailing: price != null
+            ? Text(
+                '₹${price!.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              )
+            : const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textSecondary),
       ),
     );
   }

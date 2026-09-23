@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = 'https://indiawebdesigns.in/app/askus/api';
+  static const String baseUrl = 'https://apps.indiawebdesigns.in/askus/api';
 
   // Auth endpoints
   static const String login = '/auth/login.php';

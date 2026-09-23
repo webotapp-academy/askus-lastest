@@ -26,6 +26,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   late TextEditingController _skuController;
 
   int? _selectedCategoryId;
+  int? _selectedSubcategoryId;
   String _selectedStatus = 'active';
   final List<File> _newImages = [];
   final List<String> _existingImages = [];
@@ -46,11 +47,16 @@ class _EditProductScreenState extends State<EditProductScreen> {
         TextEditingController(text: widget.product.stock.toString());
     _skuController = TextEditingController(text: widget.product.sku ?? '');
     _selectedCategoryId = widget.product.categoryId;
+    _selectedSubcategoryId = widget.product.subcategoryId;
     _selectedStatus = widget.product.status;
     _existingImages.addAll(widget.product.images);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryProvider>().fetchCategories();
+      final categoryProvider = context.read<CategoryProvider>();
+      categoryProvider.fetchCategories();
+      if (_selectedCategoryId != null) {
+        categoryProvider.fetchSubcategories(_selectedCategoryId!);
+      }
     });
   }
 
@@ -94,6 +100,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       'name': _nameController.text.trim(),
       'description': _descriptionController.text.trim(),
       'category_id': _selectedCategoryId,
+      'subcategory_id': _selectedSubcategoryId,
       'price': double.parse(_priceController.text),
       'compare_price': _comparePriceController.text.isNotEmpty
           ? double.parse(_comparePriceController.text)
@@ -279,20 +286,66 @@ class _EditProductScreenState extends State<EditProductScreen> {
         const SizedBox(height: 12),
         Consumer<CategoryProvider>(
           builder: (context, categoryProvider, _) {
-            return DropdownButtonFormField<int>(
-              value: _selectedCategoryId,
-              decoration: InputDecoration(
-                labelText: 'Category',
-                filled: true,
-                fillColor: Colors.white,
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              items: categoryProvider.categories.map((cat) {
-                return DropdownMenuItem(value: cat.id, child: Text(cat.name));
-              }).toList(),
-              onChanged: (value) => setState(() => _selectedCategoryId = value),
-              validator: (v) => v == null ? 'Required' : null,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<int>(
+                  value: _selectedCategoryId,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border:
+                        OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: categoryProvider.categories.map((cat) {
+                    return DropdownMenuItem(value: cat.id, child: Text(cat.name));
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategoryId = value;
+                      _selectedSubcategoryId = null;
+                    });
+                    if (value != null) {
+                      categoryProvider.fetchSubcategories(value);
+                    }
+                  },
+                  validator: (v) => v == null ? 'Required' : null,
+                ),
+                if (_selectedCategoryId != null) ...[
+                  const SizedBox(height: 12),
+                  Builder(builder: (context) {
+                    final subcategories =
+                        categoryProvider.getSubcategoriesByCategory(_selectedCategoryId!);
+                    if (categoryProvider.isLoadingSubcategories) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: LinearProgressIndicator(),
+                      );
+                    }
+                    if (subcategories.isEmpty) return const SizedBox.shrink();
+                    final validSubcategoryId = subcategories.any((s) => s.id == _selectedSubcategoryId)
+                        ? _selectedSubcategoryId
+                        : null;
+                    return DropdownButtonFormField<int>(
+                      value: validSubcategoryId,
+                      decoration: InputDecoration(
+                        labelText: 'Subcategory (Optional)',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: subcategories.map((sub) {
+                        return DropdownMenuItem(
+                            value: sub.id, child: Text(sub.name));
+                      }).toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedSubcategoryId = value),
+                    );
+                  }),
+                ],
+              ],
             );
           },
         ),

@@ -26,6 +26,7 @@ $address     = trim($input['address'] ?? '');
 $city        = trim($input['city'] ?? '');
 $state       = trim($input['state'] ?? '');
 $pincode     = trim($input['pincode'] ?? '');
+$category_id = !empty($input['category_id']) ? intval($input['category_id']) : null;
 $gst_number  = trim($input['gst_number'] ?? '');
 $pan_number  = trim($input['pan_number'] ?? '');
 $payment_id  = trim($input['payment_id'] ?? '');
@@ -33,7 +34,7 @@ $vendor_type = trim($input['vendor_type'] ?? 'vendor');
 $plan_id     = trim($input['plan_id'] ?? '');
 
 error_log("=== CREATE VENDOR AFTER PAYMENT START ===");
-error_log("Email: $email | Payment ID: $payment_id | Plan ID: $plan_id");
+error_log("Email: $email | Payment ID: $payment_id | Plan ID: $plan_id | Category ID: " . ($category_id ?? 'None'));
 
 if (empty($payment_id)) {
     jsonResponse(['success' => false, 'message' => 'Payment ID is required'], 400);
@@ -101,42 +102,92 @@ try {
         $isVerifiedLocal   = (int) (($plan['has_verified_badge'] ?? 0) ? 1 : 0);
     }
 
-    // ✅ CREATE THE VENDOR ROW
-    $sql = "INSERT INTO vendors (
-        uuid, vendor_type,
-        owner_name, email, phone, password,
-        store_name, store_slug, address, city, state, pincode,
-        gst_number, pan_number,
-        current_plan_id, plan_expires_at,
-        available_featured_days, available_boost_days, is_verified_local,
-        status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())";
+    // Check if category_id column exists before inserting it
+    $colCheck = $pdo->prepare("SHOW COLUMNS FROM vendors LIKE 'category_id'");
+    $colCheck->execute();
+    $hasCategoryCol = (bool) $colCheck->fetch();
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        $uuid,
-        $vendor_type,
-        $owner_name,
-        $email,
-        $phone,
-        $hashedPassword,
-        $store_name,
-        $slug,
-        $address,
-        $city,
-        $state,
-        $pincode,
-        $gst_number ?: null,
-        $pan_number ?: null,
-        $plan ? (int) $plan['id'] : null,
-        $planExpiresAt,
-        $availableFeatured,
-        $availableBoost,
-        $isVerifiedLocal,
-    ]);
+    if ($hasCategoryCol) {
+        $sql = "INSERT INTO vendors (
+            uuid, vendor_type, category_id,
+            owner_name, email, phone, password,
+            store_name, store_slug, address, city, state, pincode,
+            gst_number, pan_number,
+            current_plan_id, plan_expires_at,
+            available_featured_days, available_boost_days, is_verified_local,
+            status, approved_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW(), NOW(), NOW())";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            $uuid,
+            $vendor_type,
+            $category_id,
+            $owner_name,
+            $email,
+            $phone,
+            $hashedPassword,
+            $store_name,
+            $slug,
+            $address,
+            $city,
+            $state,
+            $pincode,
+            $gst_number ?: null,
+            $pan_number ?: null,
+            $plan ? (int) $plan['id'] : null,
+            $planExpiresAt,
+            $availableFeatured,
+            $availableBoost,
+            $isVerifiedLocal,
+        ]);
+    } else {
+        $sql = "INSERT INTO vendors (
+            uuid, vendor_type,
+            owner_name, email, phone, password,
+            store_name, store_slug, address, city, state, pincode,
+            gst_number, pan_number,
+            current_plan_id, plan_expires_at,
+            available_featured_days, available_boost_days, is_verified_local,
+            status, approved_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW(), NOW(), NOW())";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            $uuid,
+            $vendor_type,
+            $owner_name,
+            $email,
+            $phone,
+            $hashedPassword,
+            $store_name,
+            $slug,
+            $address,
+            $city,
+            $state,
+            $pincode,
+            $gst_number ?: null,
+            $pan_number ?: null,
+            $plan ? (int) $plan['id'] : null,
+            $planExpiresAt,
+            $availableFeatured,
+            $availableBoost,
+            $isVerifiedLocal,
+        ]);
+    }
 
     $vendorId = (int) $pdo->lastInsertId();
-    error_log("Vendor created: ID=$vendorId, Email=$email, Type=$vendor_type, Plan=" . ($plan ? $plan['name'] : 'None'));
+    error_log("Vendor created: ID=$vendorId, Email=$email, Type=$vendor_type, Status=approved");
+
+    // Insert into vendor_categories if category_id provided and table exists
+    if ($category_id) {
+        try {
+            $catStmt = $pdo->prepare("INSERT INTO vendor_categories (vendor_id, category_id) VALUES (?, ?)");
+            $catStmt->execute([$vendorId, $category_id]);
+        } catch (Exception $e) {
+            error_log("Note: vendor_categories insert skipped/failed: " . $e->getMessage());
+        }
+    }
 
     // Record subscription history
     if ($plan) {
@@ -159,10 +210,7 @@ try {
     $stmt = $pdo->prepare("UPDATE payments SET user_id = ? WHERE id = ?");
     $stmt->execute([$vendorId, $payment_id]);
 
-    // ✅ Generate JWT using VENDOR's ID (vendors.id).
-    // Live server getAuthUser() for vendors does:
-    //   SELECT * FROM vendors WHERE id = token['user_id']
-    // So we must pass vendorId here.
+    // Generate JWT using VENDOR's ID (vendors.id).
     $token = generateToken($vendorId, 'vendor');
     error_log("JWT generated for vendor_id=$vendorId");
 
@@ -177,7 +225,6 @@ try {
         'message' => 'Vendor created successfully after payment verification',
         'token'   => $token,
         'user'    => [
-            // ✅ Use vendorId as 'id' so profile.php / getAuthUser() can find this vendor
             'id'         => $vendorId,
             'uuid'       => $uuid,
             'name'       => $owner_name,
@@ -185,7 +232,7 @@ try {
             'phone'      => $phone,
             'avatar'     => null,
             'role'       => 'vendor',
-            'status'     => 'pending',
+            'status'     => 'approved',
             'vendor_profile' => [
                 'id'                      => $vendorId,
                 'store_name'              => $store_name,
@@ -194,7 +241,8 @@ try {
                 'city'                    => $city,
                 'state'                   => $state,
                 'pincode'                 => $pincode,
-                'status'                  => 'pending',
+                'category_id'             => $category_id,
+                'status'                  => 'approved',
                 'vendor_type'             => $vendor_type,
                 'current_plan_id'         => $responsePlanId,
                 'max_listings'            => $responseMaxListings,

@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String _loginRole = 'user'; // 'user' or 'vendor'
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -71,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen>
     final success = await authProvider.login(
       _identifierController.text.trim(),
       _passwordController.text,
+      role: _loginRole,
     );
 
     if (!mounted) return;
@@ -392,6 +394,63 @@ class _LoginScreenState extends State<LoginScreen>
       padding: const EdgeInsets.all(28),
       child: Column(
         children: [
+          // Role Selection Toggle
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _loginRole = 'user'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _loginRole == 'user' ? AppColors.primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Customer',
+                          style: TextStyle(
+                            color: _loginRole == 'user' ? Colors.white : AppColors.textSecondary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _loginRole = 'vendor'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _loginRole == 'vendor' ? AppColors.warning : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Vendor',
+                          style: TextStyle(
+                            color: _loginRole == 'vendor' ? Colors.white : AppColors.textSecondary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           _buildTextField(
             controller: _identifierController,
             label: 'Email or Phone',

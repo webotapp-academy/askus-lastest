@@ -42,6 +42,7 @@ try {
     $description = trim($input['description'] ?? '');
     $shortDescription = trim($input['short_description'] ?? '');
     $categoryId = intval($input['category_id'] ?? 0);
+    $subcategoryId = !empty($input['subcategory_id']) ? intval($input['subcategory_id']) : null;
     
     // Price mapping: mrp is the original price, selling_price is the discounted price.
     // Frontend sends 'price' as the main price.
@@ -57,15 +58,25 @@ try {
     }
     
     $pdo = getDBConnection();
+    
+    if ($subcategoryId) {
+        $checkSub = $pdo->prepare("SELECT id FROM subcategories WHERE id = ? AND category_id = ? AND status = 'active'");
+        $checkSub->execute([$subcategoryId, $categoryId]);
+        if (!$checkSub->fetch()) {
+            $subcategoryId = null;
+        }
+    }
+
     $uuid = generateUUID();
     $slug = createSlug($name);
     
     // is_approved = 0 means pending admin approval
-    $stmt = $pdo->prepare("INSERT INTO products (uuid, vendor_id, category_id, name, slug, description, short_description, mrp, selling_price, stock_quantity, sku, unit, status, is_approved, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())");
+    $stmt = $pdo->prepare("INSERT INTO products (uuid, vendor_id, category_id, subcategory_id, name, slug, description, short_description, mrp, selling_price, stock_quantity, sku, unit, status, is_approved, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())");
     $stmt->execute([
         $uuid, 
         $vendor['id'], 
         $categoryId, 
+        $subcategoryId,
         $name, 
         $slug, 
         $description, 

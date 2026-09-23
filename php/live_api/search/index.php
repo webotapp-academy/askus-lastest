@@ -6,13 +6,14 @@ try {
     $type = $_GET['type'] ?? 'all';
 
     if (strlen($q) < 2) {
-        jsonResponse(['success' => true, 'products' => [], 'services' => []]);
+        jsonResponse(['success' => true, 'products' => [], 'services' => [], 'vendors' => []]);
     }
 
     $pdo = getDBConnection();
 
     $products = [];
     $services = [];
+    $vendors  = [];
 
     if ($type === 'all' || $type === 'products') {
         try {
@@ -24,7 +25,7 @@ try {
                        ) as thumbnail
                 FROM products p
                 JOIN vendors v ON p.vendor_id = v.id
-                WHERE p.status = 'active' AND p.deleted_at IS NULL AND v.status = 'approved'
+                WHERE p.status = 'active' AND p.deleted_at IS NULL AND v.status IN ('approved', 'active')
                 AND (p.name LIKE ? OR p.description LIKE ?)
                 ORDER BY p.is_featured DESC, p.created_at DESC
                 LIMIT 20
@@ -54,7 +55,7 @@ try {
                        (SELECT si.image_url FROM service_images si WHERE si.service_id = s.id ORDER BY si.sort_order LIMIT 1) as thumbnail
                 FROM services s
                 JOIN vendors v ON s.vendor_id = v.id
-                WHERE s.status = 'active' AND s.deleted_at IS NULL AND v.status = 'approved'
+                WHERE s.status = 'active' AND s.deleted_at IS NULL AND v.status IN ('approved', 'active')
                 AND (s.name LIKE ? OR s.description LIKE ?)
                 ORDER BY s.created_at DESC
                 LIMIT 20
@@ -66,10 +67,29 @@ try {
         }
     }
 
+    if ($type === 'all' || $type === 'vendors') {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT id, uuid, owner_name, store_name, store_slug, store_logo as logo, store_banner as banner,
+                       store_description, address, city, state, pincode, rating, total_reviews, is_verified, status
+                FROM vendors
+                WHERE status IN ('approved', 'active') AND deleted_at IS NULL
+                AND (store_name LIKE ? OR owner_name LIKE ? OR store_description LIKE ? OR city LIKE ?)
+                ORDER BY rating DESC, created_at DESC
+                LIMIT 20
+            ");
+            $stmt->execute(["%$q%", "%$q%", "%$q%", "%$q%"]);
+            $vendors = $stmt->fetchAll();
+        } catch (Exception $e) {
+            error_log("Search vendors error: " . $e->getMessage());
+        }
+    }
+
     jsonResponse([
         'success' => true,
         'products' => $products,
-        'services' => $services
+        'services' => $services,
+        'vendors' => $vendors
     ]);
 
 } catch (Exception $e) {

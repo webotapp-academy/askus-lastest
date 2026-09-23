@@ -24,6 +24,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final _skuController = TextEditingController();
 
   int? _selectedCategoryId;
+  int? _selectedSubcategoryId;
   final List<File> _images = [];
   bool _isLoading = false;
   bool _acceptOwnership = false;
@@ -84,6 +85,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
       categoryId: _selectedCategoryId!,
+      subcategoryId: _selectedSubcategoryId,
       price: double.parse(_priceController.text),
       comparePrice: _comparePriceController.text.isNotEmpty
           ? double.parse(_comparePriceController.text)
@@ -196,16 +198,54 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               const SizedBox(height: 16),
               Consumer<CategoryProvider>(
                 builder: (context, categoryProvider, _) {
-                  return DropdownButtonFormField<int>(
-                    value: _selectedCategoryId,
-                    decoration: const InputDecoration(labelText: 'Category'),
-                    items: categoryProvider.categories.map((cat) {
-                      return DropdownMenuItem(
-                          value: cat.id, child: Text(cat.name));
-                    }).toList(),
-                    onChanged: (value) =>
-                        setState(() => _selectedCategoryId = value),
-                    validator: (v) => v == null ? 'Required' : null,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<int>(
+                        value: _selectedCategoryId,
+                        decoration: const InputDecoration(labelText: 'Category'),
+                        items: categoryProvider.categories.map((cat) {
+                          return DropdownMenuItem(
+                              value: cat.id, child: Text(cat.name));
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategoryId = value;
+                            _selectedSubcategoryId = null;
+                          });
+                          if (value != null) {
+                            context.read<CategoryProvider>().fetchSubcategories(value);
+                          }
+                        },
+                        validator: (v) => v == null ? 'Required' : null,
+                      ),
+                      if (_selectedCategoryId != null) ...[
+                        const SizedBox(height: 16),
+                        Builder(builder: (context) {
+                          final subcategories = categoryProvider.getSubcategoriesByCategory(_selectedCategoryId!);
+                          if (categoryProvider.isLoadingSubcategories) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: LinearProgressIndicator(),
+                            );
+                          }
+                          if (subcategories.isEmpty) return const SizedBox.shrink();
+                          final validSubcategoryId = subcategories.any((s) => s.id == _selectedSubcategoryId)
+                              ? _selectedSubcategoryId
+                              : null;
+                          return DropdownButtonFormField<int>(
+                            value: validSubcategoryId,
+                            decoration: const InputDecoration(labelText: 'Subcategory (Optional)'),
+                            items: subcategories.map((sub) {
+                              return DropdownMenuItem(
+                                  value: sub.id, child: Text(sub.name));
+                            }).toList(),
+                            onChanged: (value) =>
+                                setState(() => _selectedSubcategoryId = value),
+                          );
+                        }),
+                      ],
+                    ],
                   );
                 },
               ),
