@@ -57,9 +57,18 @@ class Product {
     List<String> imageList = [];
     if (json['images'] != null) {
       if (json['images'] is List) {
-        imageList = (json['images'] as List).map((e) => e.toString()).toList();
-      } else if (json['images'] is String) {
-        imageList = [json['images']];
+        for (var item in json['images']) {
+          if (item is Map) {
+            final url = item['image_url'] ?? item['url'] ?? item['image'] ?? item['path'];
+            if (url != null && url.toString().trim().isNotEmpty) {
+              imageList.add(url.toString().trim());
+            }
+          } else if (item != null && item.toString().trim().isNotEmpty) {
+            imageList.add(item.toString().trim());
+          }
+        }
+      } else if (json['images'] is String && json['images'].toString().trim().isNotEmpty) {
+        imageList = [json['images'].toString().trim()];
       }
     }
 
@@ -94,6 +103,11 @@ class Product {
       thumbnailValue = null;
     }
     thumbnailValue = thumbnailValue ?? (imageList.isNotEmpty ? imageList.first : null);
+
+    // Ensure imageList has at least the thumbnail if available
+    if (imageList.isEmpty && thumbnailValue != null && thumbnailValue.isNotEmpty) {
+      imageList.add(thumbnailValue);
+    }
 
     return Product(
       id: json['id'] ?? 0,

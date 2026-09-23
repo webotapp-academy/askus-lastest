@@ -138,7 +138,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildImageGallery(dynamic product) {
-    final images = product.images.isNotEmpty ? product.images : [''];
+    final List<String> images = [];
+    if (product.images is List) {
+      for (var img in product.images) {
+        if (img != null && img.toString().trim().isNotEmpty) {
+          images.add(img.toString().trim());
+        }
+      }
+    }
+    if (images.isEmpty &&
+        product.thumbnail != null &&
+        product.thumbnail.toString().trim().isNotEmpty) {
+      images.add(product.thumbnail.toString().trim());
+    }
+    if (images.isEmpty) {
+      images.add('');
+    }
 
     return Container(
       color: Colors.white,

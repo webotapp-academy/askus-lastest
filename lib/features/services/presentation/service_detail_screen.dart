@@ -124,7 +124,22 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   }
 
   Widget _buildImageGallery(dynamic service) {
-    final images = service.images.isNotEmpty ? service.images : [''];
+    final List<String> images = [];
+    if (service.images is List) {
+      for (var img in service.images) {
+        if (img != null && img.toString().trim().isNotEmpty) {
+          images.add(img.toString().trim());
+        }
+      }
+    }
+    if (images.isEmpty &&
+        service.thumbnail != null &&
+        service.thumbnail.toString().trim().isNotEmpty) {
+      images.add(service.thumbnail.toString().trim());
+    }
+    if (images.isEmpty) {
+      images.add('');
+    }
 
     return Container(
       color: Colors.white,
