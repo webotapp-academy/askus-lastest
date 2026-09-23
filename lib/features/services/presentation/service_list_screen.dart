@@ -300,7 +300,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ServiceDetailScreen(serviceId: service.id),
+          builder: (_) => ServiceDetailScreen(
+            serviceId: service.id,
+            initialService: service,
+          ),
         ),
       ),
       child: Container(
@@ -790,7 +793,10 @@ class _ServiceCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ServiceDetailScreen(serviceId: service.id),
+          builder: (_) => ServiceDetailScreen(
+            serviceId: service.id,
+            initialService: service,
+          ),
         ),
       ),
       child: Container(

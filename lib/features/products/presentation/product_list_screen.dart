@@ -851,7 +851,10 @@ class _ProductCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(productId: product.id),
+          builder: (_) => ProductDetailScreen(
+            productId: product.id,
+            initialProduct: product,
+          ),
         ),
       ),
       child: Container(
@@ -1030,7 +1033,10 @@ class _ProductGridCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(productId: product.id),
+          builder: (_) => ProductDetailScreen(
+            productId: product.id,
+            initialProduct: product,
+          ),
         ),
       ),
       child: Container(

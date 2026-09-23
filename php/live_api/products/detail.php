@@ -10,13 +10,18 @@ try {
     $pdo = getDBConnection();
 
     $stmt = $pdo->prepare("
-        SELECT p.*, v.store_name as vendor_name, v.rating as vendor_rating, v.city as vendor_city,
+        SELECT p.*, 
+               COALESCE(v.store_name, u.store_name, 'AskUs Vendor') as vendor_name, 
+               COALESCE(v.rating, 0) as vendor_rating, 
+               COALESCE(v.city, '') as vendor_city,
+               COALESCE(v.phone, '') as vendor_phone,
                c.name as category_name,
-               (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = 1 ORDER BY pi.sort_order LIMIT 1) as thumbnail
+               (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.sort_order ASC LIMIT 1) as thumbnail
         FROM products p
-        JOIN vendors v ON p.vendor_id = v.id
+        LEFT JOIN vendors v ON p.vendor_id = v.id
+        LEFT JOIN users u ON p.vendor_id = u.id
         LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.id = ? AND p.deleted_at IS NULL
+        WHERE p.id = ?
     ");
     $stmt->execute([$id]);
     $product = $stmt->fetch();
@@ -45,6 +50,14 @@ try {
     if (empty($product['thumbnail']) && !empty($product['images'])) {
         $product['thumbnail'] = $product['images'][0];
     }
+
+    $product['vendor'] = [
+        'id' => $product['vendor_id'] ?? 0,
+        'name' => $product['vendor_name'] ?? 'AskUs Vendor',
+        'rating' => $product['vendor_rating'] ?? 0,
+        'city' => $product['vendor_city'] ?? '',
+        'phone' => $product['vendor_phone'] ?? '',
+    ];
 
     try {
         $pdo->prepare("UPDATE products SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?")->execute([$id]);

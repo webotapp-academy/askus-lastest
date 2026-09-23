@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/loading_widget.dart';
+import '../data/service_model.dart';
 import '../data/service_provider.dart';
 import '../../enquiries/presentation/create_enquiry_screen.dart';
 import '../../reviews/presentation/reviews_list_screen.dart';
@@ -12,8 +13,13 @@ import '../../reviews/presentation/widgets/rating_bar.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   final int serviceId;
+  final Service? initialService;
 
-  const ServiceDetailScreen({super.key, required this.serviceId});
+  const ServiceDetailScreen({
+    super.key,
+    required this.serviceId,
+    this.initialService,
+  });
 
   @override
   State<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
@@ -28,6 +34,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        if (widget.initialService != null) {
+          context.read<ServiceProvider>().setInitialService(widget.initialService!);
+        }
         context.read<ServiceProvider>().fetchServiceDetail(widget.serviceId);
         // Load reviews for this service's vendor
         context.read<ReviewProvider>().fetchReviews(

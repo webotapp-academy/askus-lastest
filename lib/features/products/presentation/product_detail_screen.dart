@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/loading_widget.dart';
+import '../data/product_model.dart';
 import '../data/product_provider.dart';
 import '../../enquiries/presentation/create_enquiry_screen.dart';
 import '../../reviews/presentation/reviews_list_screen.dart';
@@ -12,8 +13,13 @@ import '../../reviews/presentation/widgets/rating_bar.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
+  final Product? initialProduct;
 
-  const ProductDetailScreen({super.key, required this.productId});
+  const ProductDetailScreen({
+    super.key,
+    required this.productId,
+    this.initialProduct,
+  });
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -28,6 +34,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        if (widget.initialProduct != null) {
+          context.read<ProductProvider>().setInitialProduct(widget.initialProduct!);
+        }
         context.read<ProductProvider>().fetchProductDetail(widget.productId);
         // Load reviews for this product
         context.read<ReviewProvider>().fetchReviews(
@@ -51,8 +60,46 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       backgroundColor: AppColors.background,
       body: Consumer<ProductProvider>(
         builder: (context, provider, _) {
-          if (provider.isLoading || provider.currentProduct == null) {
+          if (provider.isLoading && provider.currentProduct == null) {
             return const LoadingWidget();
+          }
+
+          if (provider.currentProduct == null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 64, color: AppColors.textSecondary),
+                    const SizedBox(height: 16),
+                    Text(
+                      provider.error ?? 'Product not found',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Go Back'),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () => provider
+                              .fetchProductDetail(widget.productId),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           final product = provider.currentProduct!;

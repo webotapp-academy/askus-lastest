@@ -73,26 +73,50 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchProductDetail(int id) async {
-    _isLoading = true;
+  void setInitialProduct(Product product) {
+    _currentProduct = product;
+    _error = null;
     notifyListeners();
+  }
 
-    print('🔄 ProductProvider: Fetching product detail id=$id');
-    final response = await _api
-        .get(ApiConstants.productDetail, params: {'id': id.toString()});
-
-    if (response.success && response.data != null) {
-      final productData = response.data!['product'];
-      print(
-          '📋 ProductProvider: Product detail: thumbnail=${productData['thumbnail']}, images=${productData['images']}');
-      _currentProduct = Product.fromJson(productData);
-      print('✅ ProductProvider: Loaded ${_currentProduct?.name}');
-    } else {
-      print('❌ ProductProvider: Error - ${response.message}');
+  Future<void> fetchProductDetail(int id) async {
+    // If we already have the product in our cached list, use it immediately
+    if (_currentProduct == null || _currentProduct!.id != id) {
+      final cached = _products.where((p) => p.id == id);
+      if (cached.isNotEmpty) {
+        _currentProduct = cached.first;
+      }
     }
 
-    _isLoading = false;
+    _isLoading = _currentProduct == null;
+    _error = null;
     notifyListeners();
+
+    try {
+      print('🔄 ProductProvider: Fetching product detail id=$id');
+      final response = await _api
+          .get(ApiConstants.productDetail, params: {'id': id.toString()});
+
+      if (response.success &&
+          response.data != null &&
+          response.data!['product'] != null) {
+        final productData = response.data!['product'];
+        print(
+            '📋 ProductProvider: Product detail: thumbnail=${productData['thumbnail']}, images=${productData['images']}');
+        _currentProduct = Product.fromJson(productData);
+        _error = null;
+        print('✅ ProductProvider: Loaded ${_currentProduct?.name}');
+      } else {
+        _error = response.message ?? 'Failed to load product details';
+        print('❌ ProductProvider: Error - ${response.message}');
+      }
+    } catch (e) {
+      _error = e.toString();
+      print('❌ ProductProvider: Exception - $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> fetchVendorProducts() async {

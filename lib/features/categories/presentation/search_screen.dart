@@ -578,7 +578,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                             MaterialPageRoute(
                                               builder: (_) =>
                                                   ProductDetailScreen(
-                                                      productId: p.id),
+                                                productId: p.id,
+                                                initialProduct: p,
+                                              ),
                                             ),
                                           ),
                                         ))),
@@ -605,7 +607,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                             MaterialPageRoute(
                                               builder: (_) =>
                                                   ServiceDetailScreen(
-                                                      serviceId: s.id),
+                                                serviceId: s.id,
+                                                initialService: s,
+                                              ),
                                             ),
                                           ),
                                         ))),

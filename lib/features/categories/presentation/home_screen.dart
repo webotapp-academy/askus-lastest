@@ -1466,7 +1466,10 @@ class _ProductCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(productId: product.id)),
+            builder: (_) => ProductDetailScreen(
+                  productId: product.id,
+                  initialProduct: product,
+                )),
       ),
       child: Container(
         width: 120,
@@ -1920,7 +1923,10 @@ class _ProductGridCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(productId: product.id)),
+            builder: (_) => ProductDetailScreen(
+                  productId: product.id,
+                  initialProduct: product,
+                )),
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -2255,7 +2261,10 @@ class _ServiceCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => ServiceDetailScreen(serviceId: service.id)),
+            builder: (_) => ServiceDetailScreen(
+                  serviceId: service.id,
+                  initialService: service,
+                )),
       ),
       child: Container(
         width: 120,

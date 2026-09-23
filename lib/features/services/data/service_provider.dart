@@ -51,8 +51,21 @@ class ServiceProvider extends ChangeNotifier {
     }
   }
 
+  void setInitialService(Service service) {
+    _currentService = service;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> fetchServiceDetail(int id) async {
-    _isLoading = true;
+    if (_currentService == null || _currentService!.id != id) {
+      final cached = _services.where((s) => s.id == id);
+      if (cached.isNotEmpty) {
+        _currentService = cached.first;
+      }
+    }
+
+    _isLoading = _currentService == null;
     _error = null;
     notifyListeners();
 
