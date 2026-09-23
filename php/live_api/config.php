@@ -32,7 +32,7 @@ define('JWT_SECRET', 'askus-jwt-secret-key-2024-production');
 define('JWT_EXPIRY', 86400 * 30);
 
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
-define('UPLOAD_URL', 'https://indiawebdesigns.in/app/askus/api/uploads/');
+define('UPLOAD_URL', 'https://apps.indiawebdesigns.in/askus/api/uploads/');
 // Razorpay Configuration
 define('RAZORPAY_KEY_ID', 'rzp_live_Rr1ievS9AKmSno'); // Replace with your actual Razorpay Key ID
 define('RAZORPAY_KEY_SECRET', 'sD85eYTIjVahnVYZglBCumSf'); // Replace with your actual Razorpay Secret Key

@@ -44,21 +44,30 @@ try {
         if (isset($banner['image']) && !empty($banner['image'])) {
             $img = trim($banner['image']);
             
+            // Replace legacy broken host with working apps host
+            if (strpos($img, 'indiawebdesigns.in/app/askus') !== false) {
+                $img = str_replace('indiawebdesigns.in/app/askus', 'apps.indiawebdesigns.in/askus', $img);
+            }
+            
             // If it already has a protocol, leave it alone
             if (preg_match('/^https?:\/\//i', $img)) {
                 $banner['image'] = $img;
             } 
-            // If it starts with /app/askus/, it's an absolute path from root
-            elseif (strpos($img, '/app/askus/') === 0) {
-                $banner['image'] = 'https://indiawebdesigns.in' . $img;
+            // If it starts with /askus/, it's from apps host root
+            elseif (strpos($img, '/askus/') === 0) {
+                $banner['image'] = 'https://apps.indiawebdesigns.in' . $img;
             }
-            // If it starts with / (but not our app path), it's probably wrong or from root
+            // If it starts with /app/askus/, map to /askus/
+            elseif (strpos($img, '/app/askus/') === 0) {
+                $banner['image'] = 'https://apps.indiawebdesigns.in' . substr($img, 4);
+            }
+            // If it starts with /, relative to askus app
             elseif (strpos($img, '/') === 0) {
-                $banner['image'] = 'https://indiawebdesigns.in/app/askus' . $img;
+                $banner['image'] = 'https://apps.indiawebdesigns.in/askus' . $img;
             }
             // Just a filename or relative path
             else {
-                $banner['image'] = 'https://indiawebdesigns.in/app/askus/uploads/banners/' . $img;
+                $banner['image'] = 'https://apps.indiawebdesigns.in/askus/uploads/banners/' . $img;
             }
         }
     }

@@ -1,3 +1,5 @@
+import '../../../core/utils/helpers.dart';
+
 class Product {
   final int id;
   final String uuid;
@@ -61,14 +63,14 @@ class Product {
           if (item is Map) {
             final url = item['image_url'] ?? item['url'] ?? item['image'] ?? item['path'];
             if (url != null && url.toString().trim().isNotEmpty) {
-              imageList.add(url.toString().trim());
+              imageList.add(Helpers.fixImageUrl(url.toString().trim()));
             }
           } else if (item != null && item.toString().trim().isNotEmpty) {
-            imageList.add(item.toString().trim());
+            imageList.add(Helpers.fixImageUrl(item.toString().trim()));
           }
         }
       } else if (json['images'] is String && json['images'].toString().trim().isNotEmpty) {
-        imageList = [json['images'].toString().trim()];
+        imageList = [Helpers.fixImageUrl(json['images'].toString().trim())];
       }
     }
 
@@ -101,6 +103,8 @@ class Product {
     String? thumbnailValue = json['thumbnail'];
     if (thumbnailValue != null && thumbnailValue.trim().isEmpty) {
       thumbnailValue = null;
+    } else if (thumbnailValue != null) {
+      thumbnailValue = Helpers.fixImageUrl(thumbnailValue);
     }
     thumbnailValue = thumbnailValue ?? (imageList.isNotEmpty ? imageList.first : null);
 

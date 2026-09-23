@@ -52,4 +52,36 @@ class Helpers {
     }
     return '${distanceInKm.toStringAsFixed(1)} km';
   }
+
+  static String fixImageUrl(String? url) {
+    if (url == null) return '';
+    String cleaned = url.trim();
+    if (cleaned.isEmpty) return '';
+
+    // Fix legacy / broken domain to working domain
+    if (cleaned.contains('indiawebdesigns.in/app/askus/')) {
+      cleaned = cleaned.replaceAll('indiawebdesigns.in/app/askus/', 'apps.indiawebdesigns.in/askus/');
+    } else if (cleaned.contains('indiawebdesigns.in/askus/')) {
+      cleaned = cleaned.replaceAll('indiawebdesigns.in/askus/', 'apps.indiawebdesigns.in/askus/');
+    }
+
+    // Fix relative paths starting with /
+    if (cleaned.startsWith('/')) {
+      return 'https://apps.indiawebdesigns.in/askus$cleaned';
+    }
+
+    // Fix relative paths like images/1.jpg or uploads/...
+    if (!cleaned.startsWith('http://') &&
+        !cleaned.startsWith('https://') &&
+        !cleaned.startsWith('assets/')) {
+      return 'https://apps.indiawebdesigns.in/askus/$cleaned';
+    }
+
+    // Ensure HTTPS if pointing to apps.indiawebdesigns.in
+    if (cleaned.startsWith('http://apps.indiawebdesigns.in')) {
+      cleaned = cleaned.replaceFirst('http://', 'https://');
+    }
+
+    return cleaned;
+  }
 }

@@ -1,3 +1,5 @@
+import '../../../core/utils/helpers.dart';
+
 class Banner {
   final int id;
   final String? title;
@@ -23,8 +25,10 @@ class Banner {
     return Banner(
       id: _parseInt(json['id']),
       title: json['title'],
-      image: json['image'] ?? '',
-      mobileImage: json['mobile_image'],
+      image: Helpers.fixImageUrl(json['image']?.toString()),
+      mobileImage: json['mobile_image'] != null
+          ? Helpers.fixImageUrl(json['mobile_image'].toString())
+          : null,
       linkType: json['link_type'] ?? 'none',
       linkValue: json['link_value'],
       position: json['position'] ?? 'home_top',
