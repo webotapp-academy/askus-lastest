@@ -11,10 +11,10 @@ try {
 
     $stmt = $pdo->prepare("
         SELECT p.*, 
-               COALESCE(v.store_name, u.store_name, 'AskUs Vendor') as vendor_name, 
+               COALESCE(v.store_name, u.name, 'AskUs Vendor') as vendor_name, 
                COALESCE(v.rating, 0) as vendor_rating, 
                COALESCE(v.city, '') as vendor_city,
-               COALESCE(v.phone, '') as vendor_phone,
+               COALESCE(v.phone, u.phone, '') as vendor_phone,
                c.name as category_name,
                (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.sort_order ASC LIMIT 1) as thumbnail
         FROM products p

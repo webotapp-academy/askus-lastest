@@ -58,10 +58,13 @@ class Helpers {
     String cleaned = url.trim();
     if (cleaned.isEmpty) return '';
 
+    // Fix double-domain bug if already present
+    cleaned = cleaned.replaceAll('apps.apps.indiawebdesigns.in', 'apps.indiawebdesigns.in');
+
     // Fix legacy / broken domain to working domain
     if (cleaned.contains('indiawebdesigns.in/app/askus/')) {
       cleaned = cleaned.replaceAll('indiawebdesigns.in/app/askus/', 'apps.indiawebdesigns.in/askus/');
-    } else if (cleaned.contains('indiawebdesigns.in/askus/')) {
+    } else if (!cleaned.contains('apps.indiawebdesigns.in/') && cleaned.contains('indiawebdesigns.in/askus/')) {
       cleaned = cleaned.replaceAll('indiawebdesigns.in/askus/', 'apps.indiawebdesigns.in/askus/');
     }
 

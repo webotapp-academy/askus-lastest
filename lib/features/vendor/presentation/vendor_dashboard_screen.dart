@@ -939,7 +939,15 @@ class _ProductCard extends StatelessWidget {
             child: product.thumbnail != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(product.thumbnail!, fit: BoxFit.cover),
+                    child: Image.network(
+                      product.thumbnail!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.image,
+                        color: AppColors.textSecondary,
+                        size: 24,
+                      ),
+                    ),
                   )
                 : const Icon(Icons.image, color: AppColors.textSecondary),
           ),
@@ -956,7 +964,7 @@ class _ProductCard extends StatelessWidget {
                 ),
                 Text(
                   '₹${product.price.toStringAsFixed(0)}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
