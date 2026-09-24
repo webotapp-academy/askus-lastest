@@ -193,6 +193,7 @@ class _VendorProductsScreenState extends State<VendorProductsScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Add Product'),
         backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
       ),
     );
   }

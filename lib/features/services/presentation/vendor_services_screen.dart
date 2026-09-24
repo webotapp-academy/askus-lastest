@@ -184,6 +184,7 @@ class _VendorServicesScreenState extends State<VendorServicesScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Add Service'),
         backgroundColor: AppColors.secondary,
+        foregroundColor: Colors.white,
       ),
     );
   }
