@@ -125,9 +125,10 @@ try {
         ]);
     };
 
-    // If role explicitly requested as 'vendor', prioritize vendor login
+    // If role explicitly requested as 'vendor', strictly perform vendor login
     if ($requestedRole === 'vendor') {
         $attemptVendorLogin();
+        jsonResponse(['success' => false, 'message' => 'No vendor account found with these credentials'], 404);
     }
 
     // Attempt Customer/User login
@@ -174,7 +175,12 @@ try {
         ]);
     }
 
-    // Fallback: If not logged in as regular user, attempt vendor login
+    // If role explicitly requested as 'user' and customer account wasn't matched
+    if ($requestedRole === 'user') {
+        jsonResponse(['success' => false, 'message' => 'No customer account found with these credentials'], 404);
+    }
+
+    // Fallback: If no role specified, attempt vendor login
     $attemptVendorLogin();
 
     jsonResponse(['success' => false, 'message' => 'Invalid credentials'], 401);

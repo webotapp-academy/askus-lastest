@@ -94,6 +94,26 @@ class AuthProvider extends ChangeNotifier {
         _user = User.fromJson(userData);
         debugPrint('✅ User object created: ${_user?.name} (${_user?.email})');
 
+        if (role != null && _user != null) {
+          if (role == 'vendor' && !_user!.isVendor) {
+            debugPrint('❌ Expected vendor account but logged in as customer');
+            _error = 'No vendor account found with these credentials';
+            _status = AuthStatus.unauthenticated;
+            _user = null;
+            await _api.clearToken();
+            notifyListeners();
+            return false;
+          } else if (role == 'user' && _user!.isVendor) {
+            debugPrint('❌ Expected customer account but logged in as vendor');
+            _error = 'No customer account found with these credentials';
+            _status = AuthStatus.unauthenticated;
+            _user = null;
+            await _api.clearToken();
+            notifyListeners();
+            return false;
+          }
+        }
+
         _status = AuthStatus.authenticated;
         notifyListeners();
         debugPrint('🎉 Login successful!');
