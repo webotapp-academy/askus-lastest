@@ -25,6 +25,7 @@ import '../../services/presentation/vendor_services_screen.dart';
 import '../../vendor/presentation/vendor_dashboard_screen.dart';
 import '../../vendor/presentation/vendor_profile_screen.dart';
 import 'search_screen.dart';
+import 'category_list_screen.dart';
 
 const _sectionTitleStyle = TextStyle(
   fontSize: 15,
@@ -804,7 +805,7 @@ class _UserHomeTabState extends State<_UserHomeTab> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const ProductListScreen()),
+                        builder: (_) => const CategoryListScreen()),
                   ),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,

@@ -60,10 +60,26 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   void initState() {
     super.initState();
     // Fetch plans & categories on init
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<SubscriptionProvider>().fetchPlans(targetGroup: _vendorType);
-      context.read<CategoryProvider>().fetchCategories();
+      final catProvider = context.read<CategoryProvider>();
+      await catProvider.fetchCategories();
+      _fetchWorkerSubcategories(catProvider);
     });
+  }
+
+  void _fetchWorkerSubcategories(CategoryProvider catProvider) {
+    try {
+      final workerCategory = catProvider.categories.firstWhere(
+        (c) =>
+            c.name.toLowerCase().contains('worker') ||
+            c.slug.toLowerCase().contains('worker') ||
+            c.name.toLowerCase().contains('labour') ||
+            c.slug.toLowerCase().contains('labour') ||
+            c.id == 15,
+      );
+      catProvider.fetchSubcategories(workerCategory.id);
+    } catch (_) {}
   }
 
   @override
@@ -141,7 +157,13 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         return true;
       case 1:
         if (_storeNameController.text.trim().isEmpty) {
-          _showError('Please enter your store name');
+          _showError(_vendorType == 'worker'
+              ? 'Please enter your service/business name'
+              : 'Please enter your store name');
+          return false;
+        }
+        if (_selectedCategoryId == null) {
+          _showError('Please select a business category');
           return false;
         }
         if (_storeAddressController.text.trim().isEmpty) {
@@ -214,6 +236,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       'vendor_type': _vendorType,
       'plan_id': _selectedPlan!.id,
       'plan_amount': totalAmount,
+      'category_id': _selectedCategoryId,
     };
 
     // Navigate to payment screen
@@ -443,6 +466,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                       setState(() {
                         _vendorType = 'vendor';
                         _selectedPlan = null; // Reset plan if type changes
+                        _selectedCategoryId = null; // Reset category if type changes
                       });
                     },
                     child: Container(
@@ -475,7 +499,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                       setState(() {
                         _vendorType = 'worker';
                         _selectedPlan = null; // Reset plan if type changes
+                        _selectedCategoryId = null; // Reset category if type changes
                       });
+                      _fetchWorkerSubcategories(context.read<CategoryProvider>());
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -559,13 +585,24 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           // Category Selection Dropdown
           Consumer<CategoryProvider>(
             builder: (context, categoryProvider, _) {
-              final categories = categoryProvider.parentCategories;
+              final dropdownItems = _getCategoryDropdownItems(categoryProvider);
+              final validValue = dropdownItems.any((item) => item.value == _selectedCategoryId)
+                  ? _selectedCategoryId
+                  : null;
+
               return DropdownButtonFormField<int>(
-                value: _selectedCategoryId,
+                value: validValue,
                 decoration: InputDecoration(
-                  labelText: 'Business Category',
+                  labelText: _vendorType == 'worker'
+                      ? 'Worker Service Category'
+                      : 'Business Category',
                   labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  prefixIcon: const Icon(Icons.category_outlined, color: AppColors.primary),
+                  prefixIcon: Icon(
+                    _vendorType == 'worker'
+                        ? Icons.engineering_outlined
+                        : Icons.category_outlined,
+                    color: AppColors.primary,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide(color: AppColors.border),
@@ -582,12 +619,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                   fillColor: AppColors.background.withOpacity(0.3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
-                items: categories.map((cat) {
-                  return DropdownMenuItem<int>(
-                    value: cat.id,
-                    child: Text(cat.name, style: const TextStyle(fontSize: 15)),
-                  );
-                }).toList(),
+                items: dropdownItems,
                 onChanged: (value) {
                   setState(() {
                     _selectedCategoryId = value;
@@ -595,7 +627,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                 },
                 validator: (value) {
                   if (value == null) {
-                    return 'Please select a business category';
+                    return 'Please select a category';
                   }
                   return null;
                 },
@@ -636,6 +668,65 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         ],
       ),
     );
+  }
+
+  List<DropdownMenuItem<int>> _getCategoryDropdownItems(
+      CategoryProvider categoryProvider) {
+    if (_vendorType == 'worker') {
+      Category? workerParent;
+      for (final cat in categoryProvider.categories) {
+        final name = cat.name.toLowerCase();
+        final slug = cat.slug.toLowerCase();
+        if (name.contains('worker') ||
+            slug.contains('worker') ||
+            name.contains('labour') ||
+            slug.contains('labour') ||
+            cat.id == 15) {
+          workerParent = cat;
+          break;
+        }
+      }
+
+      if (workerParent != null) {
+        final subcats =
+            categoryProvider.getSubcategoriesByCategory(workerParent.id);
+        if (subcats.isNotEmpty) {
+          return subcats.map((subcat) {
+            return DropdownMenuItem<int>(
+              value: subcat.id,
+              child: Text(subcat.name, style: const TextStyle(fontSize: 15)),
+            );
+          }).toList();
+        }
+
+        // Fallback to parent worker category if subcategories not loaded yet
+        return [
+          DropdownMenuItem<int>(
+            value: workerParent.id,
+            child: Text(workerParent.name, style: const TextStyle(fontSize: 15)),
+          ),
+        ];
+      }
+    }
+
+    // Default for 'vendor': only merchandise/product categories (excluding worker categories)
+    final vendorCategories = categoryProvider.parentCategories.where((cat) {
+      final name = cat.name.toLowerCase();
+      final slug = cat.slug.toLowerCase();
+      final isWorker = name.contains('worker') ||
+          slug.contains('worker') ||
+          name.contains('labour') ||
+          slug.contains('labour') ||
+          cat.id == 15;
+      return !isWorker;
+    }).toList();
+
+    return vendorCategories.map((cat) {
+      return DropdownMenuItem<int>(
+        value: cat.id,
+        child: Text(cat.name, style: const TextStyle(fontSize: 15)),
+      );
+    }).toList();
   }
 
   Widget _buildPlansStep() {
