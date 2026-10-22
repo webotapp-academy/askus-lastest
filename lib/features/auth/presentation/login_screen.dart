@@ -79,8 +79,9 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (success) {
       HapticFeedback.mediumImpact();
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LocationScreen()),
+        (route) => false,
       );
     } else {
       HapticFeedback.heavyImpact();
@@ -676,7 +677,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         GestureDetector(
-          onTap: () => Navigator.push(
+          onTap: () => Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const RegisterScreen()),
           ),

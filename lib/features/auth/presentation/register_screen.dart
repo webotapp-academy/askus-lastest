@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/app_theme.dart';
 import '../data/auth_provider.dart';
 import '../../location/presentation/location_screen.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -690,7 +691,11 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
           ),
         ),
         GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          },
           child: Text(
             'Sign In',
             style: TextStyle(

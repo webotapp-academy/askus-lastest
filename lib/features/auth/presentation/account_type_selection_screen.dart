@@ -57,7 +57,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
 
   void _onUserSelected() {
     HapticFeedback.mediumImpact();
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             const RegisterScreen(), // Changed to RegisterScreen
@@ -74,7 +74,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
 
   void _onVendorSelected() {
     HapticFeedback.mediumImpact();
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             const VendorRegisterScreen(),
@@ -91,7 +91,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
 
   void _onSignInSelected() {
     HapticFeedback.mediumImpact();
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             const LoginScreen(),
